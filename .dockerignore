@@ -1,0 +1,44 @@
+# Reduce Docker build context and keep secrets out of images
+
+# VCS
+.git
+.gitignore
+
+# OS/editor noise
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+
+# Env files (keep example only)
+.env
+.env.*
+!.env.example
+
+# Dependency dirs and caches
+node_modules
+.pnpm-store
+.cache
+.turbo
+
+# Build output
+dist
+build
+coverage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Package managers not used in image
+bun.lockb
+pnpm-lock.yaml
+yarn.lock
+
+# Misc
+.eslintcache
+
