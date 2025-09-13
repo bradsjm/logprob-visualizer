@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  useDeferredValue,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { AnalysisPanel } from "@/components/AnalysisPanel";
@@ -257,6 +264,16 @@ const Playground = () => {
   const [liveMessage, setLiveMessage] = useState("");
   const [lastLowIndex, setLastLowIndex] = useState<number | null>(null);
   const composerRef = useRef<ComposerHandle>(null);
+  const [isChartPending, startChartTransition] = useTransition();
+  const deferredCompletion = useDeferredValue(currentCompletion);
+
+  // Announce chart rendering status for a11y
+  useEffect(() => {
+    if (isChartPending) setLiveMessage("Rendering analysis…");
+  }, [isChartPending]);
+  useEffect(() => {
+    if (!isChartPending && currentCompletion) setLiveMessage("Response ready");
+  }, [isChartPending, currentCompletion]);
 
   // Reconcile selected model object once models list arrives
   useEffect(() => {
@@ -314,8 +331,8 @@ const Playground = () => {
           tokens: response.tokens,
         };
         setMessages([...newMessages, assistantMessage]);
-        setCurrentCompletion(response);
-        setLiveMessage("Response ready");
+        startChartTransition(() => setCurrentCompletion(response));
+        // Live region updated to "Response ready" once transition completes (see effect below)
       } else {
         // Streaming mode
         let streamText = "";
@@ -348,8 +365,9 @@ const Playground = () => {
                 return next;
               });
               if (evt.completion) {
-                setCurrentCompletion(evt.completion);
-                setLiveMessage("Response ready");
+                // Deprioritize chart render so final text paints first
+                startChartTransition(() => setCurrentCompletion(evt.completion!));
+                // Live region will be set when transition completes
               } else {
                 setLiveMessage("Response complete (no chart data)");
               }
@@ -537,7 +555,8 @@ const Playground = () => {
 
         {/* Analysis panel */}
         <AnalysisPanel
-          completion={currentCompletion}
+          completion={deferredCompletion}
+          isLoadingChart={isChartPending}
           onTokenClick={(tokenIndex) => {
             // Scroll to token and highlight
             const tokenElement = document.querySelector(

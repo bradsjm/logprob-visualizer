@@ -9,9 +9,6 @@ export const ParameterBadges = ({ parameters }: ParameterBadgesProps) => {
   return (
     <div className="flex items-center gap-1 flex-wrap">
       <Badge variant="secondary" className="text-xs">
-        T={parameters.temperature}
-      </Badge>
-      <Badge variant="secondary" className="text-xs">
         p={parameters.top_p}
       </Badge>
       <Badge variant="secondary" className="text-xs">
@@ -20,12 +17,6 @@ export const ParameterBadges = ({ parameters }: ParameterBadgesProps) => {
       <Badge variant="secondary" className="text-xs">
         top-{parameters.top_logprobs}
       </Badge>
-      {(parameters.presence_penalty !== 0 ||
-        parameters.frequency_penalty !== 0) && (
-        <Badge variant="outline" className="text-xs">
-          penalties
-        </Badge>
-      )}
     </div>
   );
 };

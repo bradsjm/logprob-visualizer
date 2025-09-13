@@ -37,7 +37,7 @@ const CompleteRequest = z.object({
       z.object({
         role: z.enum(["user", "assistant"]),
         content: z.string(),
-      }),
+      })
     )
     .min(1),
   model: z.string(),
@@ -78,11 +78,11 @@ app.get("/api/health", async (req, reply) => {
 });
 
 app.get("/api/models", async (_req, reply) => {
-  // Hard-coded allowed models; adjust as needed or read from env.
   const models = [
+    { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
+    { id: "gpt-4.1-nano-2025-04-14", name: "GPT-4.1 Nano" },
     { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
     { id: "gpt-4.1", name: "GPT-4.1" },
-    { id: "gpt-4.1-nano-2025-04-14", name: "GPT-4.1 Nano" },
   ];
   reply.send(models);
 });
@@ -310,8 +310,22 @@ app.post("/api/complete/stream", async (req, reply) => {
         },
       });
     } catch (postErr) {
-      req.log.warn({ err: postErr }, "Failed to fetch final logprobs; sending text only");
-      write({ type: "done", completion: { text: aggregated, tokens: [], finish_reason: "stop", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, model: body.model, latency: Date.now() - start, force_prefix_echo } });
+      req.log.warn(
+        { err: postErr },
+        "Failed to fetch final logprobs; sending text only"
+      );
+      write({
+        type: "done",
+        completion: {
+          text: aggregated,
+          tokens: [],
+          finish_reason: "stop",
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+          model: body.model,
+          latency: Date.now() - start,
+          force_prefix_echo,
+        },
+      });
     } finally {
       end();
     }

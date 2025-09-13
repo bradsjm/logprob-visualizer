@@ -7,8 +7,9 @@ import {
   Copy,
   FileJson,
   FileDown,
+  Loader2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { LogprobChart } from "./LogprobChart";
 
@@ -27,12 +28,14 @@ interface AnalysisPanelProps {
   completion: CompletionLP | null;
   onTokenClick: (tokenIndex: number) => void;
   onTokenHover?: (tokenIndex: number | null) => void;
+  isLoadingChart?: boolean;
 }
 
 export const AnalysisPanel = ({
   completion,
   onTokenClick,
   onTokenHover,
+  isLoadingChart,
 }: AnalysisPanelProps) => {
   const [showRawJson, setShowRawJson] = useState(false);
 
@@ -52,15 +55,17 @@ export const AnalysisPanel = ({
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
-  const finishReasonClass = useMemo(() => {
-    const r = (completion.finish_reason || "").toLowerCase();
-    if (r === "stop" || r === "end_turn" || r === "completed")
-      return "text-[hsl(var(--success))]";
-    if (r === "length" || r === "max_tokens") return "text-destructive";
-    if (r === "content_filter") return "text-[hsl(var(--warning))]";
-    if (r === "tool_calls") return "text-[hsl(var(--info))]";
-    return "text-foreground";
-  }, [completion.finish_reason]);
+  const r = (completion.finish_reason || "").toLowerCase();
+  const finishReasonClass =
+    r === "stop" || r === "end_turn" || r === "completed"
+      ? "text-[hsl(var(--success))]"
+      : r === "length" || r === "max_tokens"
+        ? "text-destructive"
+        : r === "content_filter"
+          ? "text-[hsl(var(--warning))]"
+          : r === "tool_calls"
+            ? "text-[hsl(var(--info))]"
+            : "text-foreground";
 
   return (
     <div className="analysis-panel">
@@ -104,6 +109,12 @@ export const AnalysisPanel = ({
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <BarChart className="w-4 h-4" />
               Token Probabilities
+              {isLoadingChart ? (
+                <span className="ml-2 inline-flex items-center text-muted-foreground text-xs">
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  Rendering analysis…
+                </span>
+              ) : null}
             </CardTitle>
           </CardHeader>
           <CardContent>
