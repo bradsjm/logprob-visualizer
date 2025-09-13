@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { BranchBadge } from "@/components/BranchBadge";
@@ -7,6 +8,8 @@ import { Composer, type ComposerHandle } from "@/components/Composer";
 import { ModelSelector } from "@/components/ModelSelector";
 import { ParameterBadges } from "@/components/ParameterBadges";
 import { PresetChips } from "@/components/PresetChips";
+import { toast } from "@/components/ui/sonner";
+import { useModels } from "@/hooks/useModels";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
 import type {
   CompletionLP,
@@ -177,10 +180,26 @@ const buildMockCompletion = (modelId: string): CompletionLP => ({
   latency: 1240,
 });
 
+const clamp = (v: number, min: number, max: number): number => Math.max(min, Math.min(max, v));
+
+const DEFAULT_PARAMS: Readonly<RunParameters> = Object.freeze({
+  temperature: 0.7,
+  top_p: 1.0,
+  max_tokens: 128,
+  top_logprobs: 5,
+  presence_penalty: 0,
+  frequency_penalty: 0,
+});
+
 const Playground = () => {
+  const { models } = useModels();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read initial state from URL (idempotent on first render)
+  const initialModelId = searchParams.get("model") ?? "gpt-4o";
   const [selectedModel, setSelectedModel] = useState<ModelInfo>({
-    id: "gpt-4o",
-    name: "GPT-4",
+    id: initialModelId,
+    name: initialModelId,
   });
   const seed = buildMockCompletion(selectedModel.id);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -191,20 +210,56 @@ const Playground = () => {
   );
   const [currentCompletion, setCurrentCompletion] =
     useState<CompletionLP | null>(seed);
-  const [runParameters, setRunParameters] = useState<RunParameters>({
-    temperature: 0.7,
-    top_p: 1.0,
-    max_tokens: 128,
-    top_logprobs: 5,
-    presence_penalty: 0,
-    frequency_penalty: 0,
-  });
+  const initialParams: RunParameters = useMemo(() => {
+    const n = (key: keyof RunParameters, def: number, min: number, max: number): number => {
+      const raw = searchParams.get(key as string);
+      if (raw == null) return def;
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? clamp(parsed, min, max) : def;
+    };
+    return {
+      temperature: n("temperature", DEFAULT_PARAMS.temperature, 0, 2),
+      top_p: n("top_p", DEFAULT_PARAMS.top_p, 0, 1),
+      max_tokens: Math.round(n("max_tokens", DEFAULT_PARAMS.max_tokens, 1, 256)),
+      top_logprobs: Math.round(n("top_logprobs", DEFAULT_PARAMS.top_logprobs, 1, 10)),
+      presence_penalty: n("presence_penalty", DEFAULT_PARAMS.presence_penalty, -2, 2),
+      frequency_penalty: n("frequency_penalty", DEFAULT_PARAMS.frequency_penalty, -2, 2),
+    } satisfies RunParameters;
+  }, [searchParams]);
+
+  const [runParameters, setRunParameters] = useState<RunParameters>(initialParams);
   const [isLoading, setIsLoading] = useState(false);
   const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(true);
   const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(true);
   const [liveMessage, setLiveMessage] = useState("");
   const [lastLowIndex, setLastLowIndex] = useState<number | null>(null);
   const composerRef = useRef<ComposerHandle>(null);
+
+  // Reconcile selected model object once models list arrives
+  useEffect(() => {
+    if (!models.length) return;
+    const match = models.find((m) => m.id === selectedModel.id);
+    if (match) {
+      if (match.name !== selectedModel.name) setSelectedModel(match);
+    } else {
+      setSelectedModel(models[0]!);
+      toast("Model updated", { description: `Selected ${models[0]!.name}` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [models]);
+
+  // Keep URL in sync with current selection/parameters
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set("model", selectedModel.id);
+    next.set("temperature", runParameters.temperature.toFixed(2));
+    next.set("top_p", runParameters.top_p.toFixed(2));
+    next.set("max_tokens", String(runParameters.max_tokens));
+    next.set("top_logprobs", String(runParameters.top_logprobs));
+    next.set("presence_penalty", runParameters.presence_penalty.toFixed(2));
+    next.set("frequency_penalty", runParameters.frequency_penalty.toFixed(2));
+    setSearchParams(next, { replace: true });
+  }, [selectedModel.id, runParameters, searchParams, setSearchParams]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -327,11 +382,14 @@ const Playground = () => {
             Logprob Visualizer
           </h1>
           <ModelSelector
+            models={models}
             selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
+            onModelChange={(model) => {
+              setSelectedModel(model);
+            }}
             temperature={runParameters.temperature}
             onTemperatureChange={(value) =>
-              setRunParameters((prev) => ({ ...prev, temperature: value }))
+              setRunParameters((prev) => ({ ...prev, temperature: clamp(value, 0, 2) }))
             }
           />
           <PresetChips

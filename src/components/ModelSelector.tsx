@@ -4,25 +4,20 @@ import { Slider } from "@/components/ui/slider";
 import type { ModelInfo } from "@/types/logprob";
 
 interface ModelSelectorProps {
-  selectedModel: ModelInfo;
-  onModelChange: (model: ModelInfo) => void;
-  temperature: number;
-  onTemperatureChange: (value: number) => void;
+  readonly models: readonly ModelInfo[];
+  readonly selectedModel: ModelInfo;
+  readonly onModelChange: (model: ModelInfo) => void;
+  readonly temperature: number;
+  readonly onTemperatureChange: (value: number) => void;
 }
 
-const AVAILABLE_MODELS: ModelInfo[] = [
-  { id: "gpt-4o", name: "GPT-4" },
-  { id: "gpt-4o-mini", name: "GPT-4 Mini" },
-  { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-];
-
-export const ModelSelector = ({ selectedModel, onModelChange, temperature, onTemperatureChange }: ModelSelectorProps) => {
+export const ModelSelector = ({ models, selectedModel, onModelChange, temperature, onTemperatureChange }: ModelSelectorProps) => {
   return (
     <div className="flex items-center gap-4">
       <Select
         value={selectedModel.id}
         onValueChange={(modelId) => {
-          const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+          const model = models.find(m => m.id === modelId);
           if (model) {
             onModelChange(model);
           }
@@ -32,7 +27,7 @@ export const ModelSelector = ({ selectedModel, onModelChange, temperature, onTem
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {AVAILABLE_MODELS.map((model) => (
+          {models.map((model) => (
             <SelectItem key={model.id} value={model.id}>
               <div className="flex items-center justify-between w-full">{model.name}</div>
             </SelectItem>

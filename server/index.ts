@@ -39,7 +39,7 @@ const CompleteRequest = z.object({
       z.object({
         role: z.enum(["user", "assistant"]),
         content: z.string(),
-      }),
+      })
     )
     .min(1),
   model: z.string(),
@@ -71,14 +71,19 @@ app.get("/api/health", async (req, reply) => {
   } catch {
     // noop
   }
-  return reply.send({ status: "ok", uptime: process.uptime(), version, request_id: req.id });
+  return reply.send({
+    status: "ok",
+    uptime: process.uptime(),
+    version,
+    request_id: req.id,
+  });
 });
 
 app.get("/api/models", async (_req, reply) => {
   // Hard-coded allowed models; adjust as needed or read from env.
   const models = [
-    { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-    { id: "gpt-4o", name: "GPT-4o" },
+    { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
+    { id: "gpt-4.1", name: "GPT-4.1" },
   ];
   reply.send(models);
 });
@@ -89,7 +94,11 @@ app.post("/api/complete", async (req, reply) => {
   if (!parsed.success) {
     return reply
       .code(400)
-      .send({ error: "Invalid request", issues: parsed.error.issues, request_id: req.id });
+      .send({
+        error: "Invalid request",
+        issues: parsed.error.issues,
+        request_id: req.id,
+      });
   }
   const body = parsed.data;
 
@@ -102,7 +111,10 @@ app.post("/api/complete", async (req, reply) => {
   // Handle force_prefix behavior
   const messages = [...body.messages];
   let force_prefix_echo: string | undefined;
-  if (body.force_prefix && (body.continuation_mode ?? "assistant-prefix") === "assistant-prefix") {
+  if (
+    body.force_prefix &&
+    (body.continuation_mode ?? "assistant-prefix") === "assistant-prefix"
+  ) {
     messages.push({ role: "assistant", content: body.force_prefix });
     force_prefix_echo = body.force_prefix;
   }
@@ -134,7 +146,11 @@ app.post("/api/complete", async (req, reply) => {
       text: mockText,
       tokens: mockTokens,
       finish_reason: "stop",
-      usage: { prompt_tokens: 5, completion_tokens: mockTokens.length, total_tokens: 5 + mockTokens.length },
+      usage: {
+        prompt_tokens: 5,
+        completion_tokens: mockTokens.length,
+        total_tokens: 5 + mockTokens.length,
+      },
       model: body.model,
       latency,
       force_prefix_echo: undefined,
@@ -143,7 +159,9 @@ app.post("/api/complete", async (req, reply) => {
   }
 
   if (!effectiveApiKey) {
-    return reply.code(500).send({ error: "Missing OPENAI_API_KEY on server", request_id: req.id });
+    return reply
+      .code(500)
+      .send({ error: "Missing OPENAI_API_KEY on server", request_id: req.id });
   }
 
   const client = new OpenAI({ apiKey: effectiveApiKey });
@@ -168,7 +186,11 @@ app.post("/api/complete", async (req, reply) => {
     if (!logprobItems || logprobItems.length === 0) {
       return reply
         .code(409)
-        .send({ error: "Model response lacked token logprobs. Pick a supported model.", request_id: req.id });
+        .send({
+          error:
+            "Model response lacked token logprobs. Pick a supported model.",
+          request_id: req.id,
+        });
     }
 
     const tokens = logprobItems.map((lp, i) => ({
@@ -188,7 +210,11 @@ app.post("/api/complete", async (req, reply) => {
       text,
       tokens,
       finish_reason: choice.finish_reason ?? "unknown",
-      usage: completion.usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      usage: completion.usage ?? {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+      },
       model: completion.model,
       latency,
       force_prefix_echo,
@@ -198,7 +224,11 @@ app.post("/api/complete", async (req, reply) => {
     req.log.error({ err }, "OpenAI error");
     return reply
       .code(502)
-      .send({ error: "Upstream OpenAI error", details: (err as Error).message, request_id: req.id });
+      .send({
+        error: "Upstream OpenAI error",
+        details: (err as Error).message,
+        request_id: req.id,
+      });
   }
 });
 

@@ -46,7 +46,7 @@ This plan delivers the Logprob Visualizer in small, reviewable phases. Each phas
 
 ## Phase 5 — Connect Models Endpoint
 
-- Frontend: Fetch models from `/api/models` at runtime (no hardcoded list). Show loading skeleton, error state with retry, and cache results in memory; expose a manual refresh.
+- Frontend: Fetch models from `/api/models` at runtime and cache results in memory on page load; populate model dropdown.
 - URL state (initial): encode model and core parameters in the URL so the picker reflects shared links.
 - Deliverables: Param badges reflect active values; Temperature slider visible in header.
 - Review: Network error toasts; verify list updates without rebuild.
@@ -55,7 +55,6 @@ This plan delivers the Logprob Visualizer in small, reviewable phases. Each phas
 
 - Frontend: API client module (`transport/rest.ts`) returning `CompletionLP`; wire Composer submit with Temperature slider; show usage, finish_reason, latency; raw JSON toggle.
 - HUD: show latency and token usage in header chips; copy text and download JSON/CSV for each run.
-- URL state (branch): include optional branch token index for shareable repro; add “Fork in new tab”.
 - A11y polish: ARIA live announcements for result ready/errors; restore focus to composer on failure.
 - Deliverables: Real completions with token heatmap + chart.
 - Review: Caps enforced (≤256 tokens; ≤10 alternatives); clamp messages surfaced.
