@@ -14,7 +14,6 @@ const HOST = process.env.HOST ?? "0.0.0.0";
 const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_BASE_URL: z.string().url().optional(),
-  MOCK_MODE: z.string().optional(),
 });
 const env = EnvSchema.parse(process.env);
 
@@ -199,7 +198,29 @@ app.post("/api/complete/stream", async (req, reply) => {
   }
   const body = parsed.data;
 
-  // Prepare NDJSON response
+  if (!effectiveApiKey) {
+    return reply
+      .code(500)
+      .send({ error: "Missing OPENAI_API_KEY on server", request_id: req.id });
+  }
+
+  const client = new OpenAI({
+    apiKey: effectiveApiKey,
+    baseURL: effectiveBaseUrl,
+  });
+
+  // Handle force_prefix behavior for the streaming generation
+  const messages = [...body.messages];
+  let force_prefix_echo: string | undefined;
+  if (
+    body.force_prefix &&
+    (body.continuation_mode ?? "assistant-prefix") === "assistant-prefix"
+  ) {
+    messages.push({ role: "assistant", content: body.force_prefix });
+    force_prefix_echo = body.force_prefix;
+  }
+
+  // Prepare NDJSON response (after validation)
   reply.raw.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
   reply.raw.setHeader("Cache-Control", "no-cache");
   reply.raw.setHeader("x-request-id", req.id);
@@ -219,43 +240,6 @@ app.post("/api/complete/stream", async (req, reply) => {
       // noop
     }
   };
-
-  // Mock mode: emit a short fake stream if OPENAI key is absent and MOCK_MODE is set
-  if (!effectiveApiKey) {
-    write({ type: "delta", delta: "[mock] Generating" });
-    setTimeout(() => write({ type: "delta", delta: "… tokens " }), 50);
-    setTimeout(() => write({ type: "delta", delta: "with NDJSON." }), 100);
-    setTimeout(() => {
-      const completion = {
-        text: "[mock] Generating… tokens with NDJSON.",
-        tokens: [],
-        finish_reason: "stop",
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-        model: body.model,
-        latency: Date.now() - start,
-        force_prefix_echo: undefined,
-      } as const;
-      write({ type: "done", completion });
-      end();
-    }, 180);
-    return;
-  }
-
-  const client = new OpenAI({
-    apiKey: effectiveApiKey,
-    baseURL: effectiveBaseUrl,
-  });
-
-  // Handle force_prefix behavior for the streaming generation
-  const messages = [...body.messages];
-  let force_prefix_echo: string | undefined;
-  if (
-    body.force_prefix &&
-    (body.continuation_mode ?? "assistant-prefix") === "assistant-prefix"
-  ) {
-    messages.push({ role: "assistant", content: body.force_prefix });
-    force_prefix_echo = body.force_prefix;
-  }
 
   try {
     let aggregated = "";
