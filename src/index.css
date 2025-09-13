@@ -2,39 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Logprob Visualizer Design System - All colors MUST be HSL */
 
 @layer base {
   :root {
+    /* Base colors */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    --foreground: 210 11% 15%;
+    
+    /* Surfaces */
+    --surface: 210 17% 98%;
+    --surface-hover: 210 17% 96%;
+    
+    /* Card backgrounds */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 210 11% 15%;
 
+    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 210 11% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand colors - Primary Green */
+    --primary: 140 60% 35%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 140 60% 30%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Accent Indigo for focus & controls */
+    --accent: 238 58% 67%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 238 58% 62%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Secondary neutral */
+    --secondary: 210 17% 96%;
+    --secondary-foreground: 210 11% 15%;
+    --secondary-hover: 210 17% 94%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Muted text and backgrounds */
+    --muted: 210 17% 96%;
+    --muted-foreground: 210 11% 46%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Borders and inputs */
+    --border: 210 20% 91%;
+    --input: 210 20% 91%;
+    --ring: 238 58% 67%;
+
+    /* Token heatmap colors - Low to High probability */
+    --token-low: 0 71% 58%;      /* Red #d73027 */
+    --token-med-low: 40 100% 68%; /* Yellow #fdae61 */
+    --token-med-high: 90 48% 67%; /* Light Green #a6d96a */
+    --token-high: 140 72% 38%;    /* Green #1a9850 */
+
+    /* Semantic states */
+    --success: 140 60% 35%;
+    --warning: 40 100% 50%;
+    --error: 0 71% 58%;
+    --info: 238 58% 67%;
 
     --radius: 0.5rem;
 
@@ -56,33 +82,48 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark theme */
+    --background: 210 20% 6%;
+    --foreground: 210 17% 94%;
+    
+    /* Surfaces */
+    --surface: 210 20% 8%;
+    --surface-hover: 210 20% 10%;
+    
+    --card: 210 20% 8%;
+    --card-foreground: 210 17% 94%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --popover: 210 20% 8%;
+    --popover-foreground: 210 17% 94%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    /* Brand colors stay consistent */
+    --primary: 140 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 140 60% 40%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --accent: 238 58% 72%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 238 58% 67%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 210 20% 10%;
+    --secondary-foreground: 210 17% 94%;
+    --secondary-hover: 210 20% 12%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 210 20% 10%;
+    --muted-foreground: 210 11% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --border: 210 20% 18%;
+    --input: 210 20% 18%;
+    --ring: 238 58% 72%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Token colors remain the same for consistency */
+    --token-low: 0 71% 58%;
+    --token-med-low: 40 100% 68%;
+    --token-med-high: 90 48% 67%;
+    --token-high: 140 72% 38%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -100,6 +141,98 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+}
+
+@layer components {
+  /* Token probability visualization */
+  .token-span {
+    @apply relative inline cursor-pointer transition-all duration-200 ease-out;
+    white-space: pre-wrap;
+  }
+  
+  .token-span:hover {
+    @apply shadow-sm;
+  }
+  
+  .token-span:focus {
+    @apply outline-none ring-2 ring-accent ring-offset-2;
+  }
+  
+  /* Token probability colors */
+  .token-low-prob {
+    background-color: hsl(var(--token-low) / 0.15);
+    border-bottom: 2px dashed hsl(var(--token-low));
+  }
+  
+  .token-med-low-prob {
+    background-color: hsl(var(--token-med-low) / 0.15);
+  }
+  
+  .token-med-high-prob {
+    background-color: hsl(var(--token-med-high) / 0.15);
+  }
+  
+  .token-high-prob {
+    background-color: hsl(var(--token-high) / 0.15);
+  }
+  
+  /* Chat bubbles */
+  .chat-bubble-user {
+    @apply bg-secondary p-4 rounded-2xl rounded-br-md max-w-[80%] ml-auto;
+  }
+  
+  .chat-bubble-assistant {
+    @apply bg-card p-4 rounded-2xl rounded-bl-md max-w-[85%] border;
+  }
+  
+  /* Workspace layout */
+  .workspace-container {
+    @apply h-screen flex flex-col;
+  }
+  
+  .workspace-main {
+    @apply flex-1 flex min-h-0;
+  }
+  
+  .transcript-panel {
+    @apply flex-1 flex flex-col min-w-0;
+  }
+  
+  .analysis-panel {
+    @apply w-80 border-l bg-surface/50 flex flex-col;
+  }
+  
+  /* Custom animations */
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 }
