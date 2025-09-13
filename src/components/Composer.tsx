@@ -1,6 +1,6 @@
 import { Send, Settings } from "lucide-react";
 import type React from "react";
-import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle, useLayoutEffect } from "react";
 
 import { ParametersDrawer } from "./ParametersDrawer";
 
@@ -43,6 +43,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     const [message, setMessage] = useState("");
     const [showParameters, setShowParameters] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [atMaxHeight, setAtMaxHeight] = useState(false);
 
     useImperativeHandle(
       ref,
@@ -52,12 +53,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         },
         openParameters: () => setShowParameters(true),
         setMessage: (value: string) => {
+          // Only update state; height adjusts in a layout effect after DOM updates
           setMessage(value);
-          const ta = textareaRef.current;
-          if (ta) {
-            ta.style.height = "auto";
-            ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
-          }
         },
       }),
       []
@@ -86,11 +83,18 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     ) => {
       setMessage(e.target.value);
 
-      // Auto-resize textarea
-      const textarea = e.target;
-      textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      // Height adjustment handled centrally in layout effect
     };
+
+    // Centralized auto-resize whenever message changes (typing or programmatic setMessage)
+    useLayoutEffect(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.style.height = "auto";
+      const clamped = Math.min(ta.scrollHeight, 200);
+      ta.style.height = `${clamped}px`;
+      setAtMaxHeight(ta.scrollHeight >= 200);
+    }, [message]);
 
     return (
       <div className="border-t bg-background">
@@ -107,7 +111,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   onKeyDown={handleKeyDown}
                   placeholder={"Type your message... (Cmd/Ctrl+Enter to send)"}
                   disabled={isLoading}
-                  className="min-h-[44px] max-h-[200px] resize-none pr-12"
+                  className={`composer-textarea min-h-[44px] max-h-[200px] pr-12 ${atMaxHeight ? 'overflow-y-auto' : 'overflow-hidden'}`}
                   rows={1}
                 />
               </div>

@@ -100,6 +100,68 @@ export const LogprobChart = ({
     return null;
   };
 
+  // Draw per-point dots using the token probability palette so dots match the legend.
+  interface LineDotProps {
+    readonly cx?: number;
+    readonly cy?: number;
+    readonly payload?: {
+      readonly index: number;
+      readonly logprob: number;
+      readonly prob: number;
+      readonly token: string;
+      readonly fullToken: string;
+    };
+  }
+
+  const colorForLogprob = (logprob: number): string => {
+    const cls = getTokenColorClass(logprob, min, max);
+    switch (cls) {
+      case "token-low-prob":
+        return "hsl(var(--token-low))";
+      case "token-med-low-prob":
+        return "hsl(var(--token-med-low))";
+      case "token-med-high-prob":
+        return "hsl(var(--token-med-high))";
+      case "token-high-prob":
+        return "hsl(var(--token-high))";
+      default:
+        return "hsl(var(--accent))";
+    }
+  };
+
+  const ColoredDot: React.FC<LineDotProps> = ({ cx, cy, payload }) => {
+    if (typeof cx !== "number" || typeof cy !== "number" || !payload)
+      return null;
+    const color = colorForLogprob(payload.logprob);
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={3}
+        fill={color}
+        stroke={color}
+        strokeWidth={2}
+      />
+    );
+  };
+
+  const ColoredActiveDot: React.FC<LineDotProps> = ({ cx, cy, payload }) => {
+    if (typeof cx !== "number" || typeof cy !== "number" || !payload)
+      return null;
+    const color = colorForLogprob(payload.logprob);
+    // Slightly larger radius for active state to improve visibility
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={6}
+        fill={color}
+        stroke={color}
+        strokeWidth={2}
+      />
+    );
+  };
+
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -150,26 +212,30 @@ export const LogprobChart = ({
           <ReferenceArea
             y1={0}
             y2={0.25}
-            fill="hsl(var(--token-low) / 0.06)"
-            strokeOpacity={0}
+            fill="hsl(var(--token-low) / 0.12)"
+            stroke="hsl(var(--token-low))"
+            strokeOpacity={0.18}
           />
           <ReferenceArea
             y1={0.25}
             y2={0.5}
-            fill="hsl(var(--token-med-low) / 0.06)"
-            strokeOpacity={0}
+            fill="hsl(var(--token-med-low) / 0.12)"
+            stroke="hsl(var(--token-med-low))"
+            strokeOpacity={0.18}
           />
           <ReferenceArea
             y1={0.5}
             y2={0.75}
-            fill="hsl(var(--token-med-high) / 0.06)"
-            strokeOpacity={0}
+            fill="hsl(var(--token-med-high) / 0.12)"
+            stroke="hsl(var(--token-med-high))"
+            strokeOpacity={0.18}
           />
           <ReferenceArea
             y1={0.75}
             y2={1}
-            fill="hsl(var(--token-high) / 0.06)"
-            strokeOpacity={0}
+            fill="hsl(var(--token-high) / 0.12)"
+            stroke="hsl(var(--token-high))"
+            strokeOpacity={0.18}
           />
           <ReferenceLine
             y={0.5}
@@ -182,8 +248,8 @@ export const LogprobChart = ({
             dataKey="prob"
             stroke="hsl(var(--accent))"
             strokeWidth={2}
-            dot={{ fill: "hsl(var(--accent))", strokeWidth: 2, r: 3 }}
-            activeDot={{ r: 6, stroke: "hsl(var(--accent))", strokeWidth: 2 }}
+            dot={<ColoredDot />}
+            activeDot={<ColoredActiveDot />}
           />
         </LineChart>
       </ResponsiveContainer>
