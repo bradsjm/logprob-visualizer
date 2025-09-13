@@ -12,6 +12,7 @@ const PORT = Number(process.env.PORT ?? 8787);
 // Env validation
 const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_BASE_URL: z.string().url().optional(),
   MOCK_MODE: z.string().optional(),
 });
 const env = EnvSchema.parse(process.env);
@@ -20,6 +21,7 @@ const resolveBoolean = (v: string | undefined): boolean =>
   typeof v === "string" && ["1", "true", "yes", "on"].includes(v.toLowerCase());
 
 const effectiveApiKey = env.OPENAI_API_KEY;
+const effectiveBaseUrl = env.OPENAI_BASE_URL;
 const MOCK_MODE = resolveBoolean(env.MOCK_MODE);
 
 const app = Fastify({
@@ -84,6 +86,7 @@ app.get("/api/models", async (_req, reply) => {
   const models = [
     { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
     { id: "gpt-4.1", name: "GPT-4.1" },
+    { id: "gpt-4.1-nano-2025-04-14", name: "GPT-4.1 Nano" },
   ];
   reply.send(models);
 });
@@ -103,8 +106,6 @@ app.post("/api/complete", async (req, reply) => {
   // Clamp ranges explicitly (defense in depth)
   const clampedTopLogprobs = Math.max(1, Math.min(10, body.top_logprobs));
   const clampedMaxTokens = Math.max(1, Math.min(256, body.max_tokens));
-
-  // top_k removed — not supported in this app
 
   // Handle force_prefix behavior
   const messages = [...body.messages];
@@ -162,7 +163,10 @@ app.post("/api/complete", async (req, reply) => {
       .send({ error: "Missing OPENAI_API_KEY on server", request_id: req.id });
   }
 
-  const client = new OpenAI({ apiKey: effectiveApiKey });
+  const client = new OpenAI({
+    apiKey: effectiveApiKey,
+    baseURL: effectiveBaseUrl,
+  });
 
   try {
     const completion = await client.chat.completions.create({
