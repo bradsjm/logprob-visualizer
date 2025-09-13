@@ -259,8 +259,26 @@ app.post("/api/complete/stream", async (req, reply) => {
   };
 
   try {
+    // Type-safe parsing for logprob deltas coming from the SDK helper events
+    const LogprobAltSchema = z.object({ token: z.string(), logprob: z.number() });
+    const LogprobDeltaSchema = z.object({
+      token: z.string().optional().default(""),
+      logprob: z.number().optional().default(Number.NEGATIVE_INFINITY),
+      top_logprobs: z.array(LogprobAltSchema).optional().default([]),
+    });
+
     let aggregated = "";
-    const stream = await client.chat.completions.create({
+    const tokens: Array<{
+      index: number;
+      token: string;
+      logprob: number;
+      prob: number;
+      top_logprobs: Array<{ token: string; logprob: number; prob: number }>;
+    }> = [];
+    let tokenIndex = 0;
+
+    // Use SDK streaming helper which emits granular events, including logprobs
+    const stream = await client.chat.completions.stream({
       model: body.model,
       messages,
       temperature: body.temperature,
@@ -268,84 +286,65 @@ app.post("/api/complete/stream", async (req, reply) => {
       presence_penalty: body.presence_penalty,
       frequency_penalty: body.frequency_penalty,
       max_tokens: Math.max(1, Math.min(256, body.max_tokens)),
-      stream: true,
-      // logprobs intentionally omitted for stream deltas; we fetch final LPs after
+      logprobs: true,
+      top_logprobs: Math.max(1, Math.min(10, body.top_logprobs)),
     });
 
-    for await (const chunk of stream) {
-      const part = chunk.choices?.[0]?.delta?.content ?? "";
-      if (part) {
-        aggregated += part;
-        write({ type: "delta", delta: part });
+    // Text content deltas
+    stream.on("content.delta", ({ delta }: { delta: string }) => {
+      if (delta) {
+        aggregated += delta;
+        write({ type: "delta", delta });
       }
-    }
+    });
 
-    // After stream completes, fetch full logprobs in a second request (best-effort)
-    try {
-      const completion = await client.chat.completions.create({
-        model: body.model,
-        messages, // same prompt context
-        temperature: body.temperature,
-        top_p: body.top_p,
-        presence_penalty: body.presence_penalty,
-        frequency_penalty: body.frequency_penalty,
-        max_tokens: Math.max(1, Math.min(256, body.max_tokens)),
-        logprobs: true,
-        top_logprobs: Math.max(1, Math.min(10, body.top_logprobs)),
-      });
+    // Token logprobs deltas (array per event)
+    stream.on(
+      "logprobs.content.delta",
+      ({ content }: { content: Array<{ token: string; logprob: number; top_logprobs?: Array<{ token: string; logprob: number }> }> }) => {
+        for (const item of content) {
+          const tokenOut = {
+            index: tokenIndex++,
+            token: item.token ?? "",
+            logprob: item.logprob ?? Number.NEGATIVE_INFINITY,
+            prob: Math.exp(item.logprob ?? Number.NEGATIVE_INFINITY),
+            top_logprobs: (item.top_logprobs ?? []).map((alt) => ({
+              token: alt.token ?? "",
+              logprob: alt.logprob ?? Number.NEGATIVE_INFINITY,
+              prob: Math.exp(alt.logprob ?? Number.NEGATIVE_INFINITY),
+            })),
+          };
+          tokens.push(tokenOut);
+          write({ type: "logprobs", delta: tokenOut });
+        }
+      }
+    );
 
-      const choice = completion.choices[0];
-      const text = choice.message.content ?? "";
-      const logprobItems = choice.logprobs?.content;
-      const tokens = (logprobItems ?? []).map((lp, i) => ({
-        index: i,
-        token: lp.token ?? "",
-        logprob: lp.logprob ?? Number.NEGATIVE_INFINITY,
-        prob: Math.exp(lp.logprob ?? Number.NEGATIVE_INFINITY),
-        top_logprobs: (lp.top_logprobs ?? []).map((alt) => ({
-          token: alt.token ?? "",
-          logprob: alt.logprob ?? Number.NEGATIVE_INFINITY,
-          prob: Math.exp(alt.logprob ?? Number.NEGATIVE_INFINITY),
-        })),
-      }));
-
+    stream.on("end", () => {
       const latency = Date.now() - start;
-      write({
-        type: "done",
-        completion: {
-          text,
-          tokens,
-          finish_reason: choice.finish_reason ?? "unknown",
-          usage: completion.usage ?? {
-            prompt_tokens: 0,
-            completion_tokens: 0,
-            total_tokens: 0,
-          },
-          model: completion.model,
-          latency,
-          force_prefix_echo,
-        },
-      });
-    } catch (postErr) {
-      req.log.warn(
-        { err: postErr },
-        "Failed to fetch final logprobs; sending text only"
-      );
+      // We may not have usage here; keep zeros for consistency with prior fallback
       write({
         type: "done",
         completion: {
           text: aggregated,
-          tokens: [],
+          tokens,
           finish_reason: "stop",
           usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
           model: body.model,
-          latency: Date.now() - start,
+          latency,
           force_prefix_echo,
         },
       });
-    } finally {
       end();
-    }
+    });
+
+    stream.on("error", (err: unknown) => {
+      req.log.error({ err }, "Stream error");
+      write({ type: "done", error: (err as Error).message });
+      end();
+    });
+    // Keep the route alive until the stream finishes
+    await stream.done();
   } catch (err) {
     req.log.error({ err }, "Stream error");
     write({ type: "done", error: (err as Error).message });
