@@ -298,6 +298,22 @@ const Playground = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [currentCompletion, lastLowIndex]);
 
+  // Track the currently highlighted token index (hover from chart) for DOM-based highlighting
+  const lastHoverRef = useRef<number | null>(null);
+
+  const handleChartHover = (tokenIndex: number | null) => {
+    const prev = lastHoverRef.current;
+    if (typeof prev === "number") {
+      const prevEl = document.querySelector(`[data-token-index="${prev}"]`);
+      prevEl?.classList.remove("token-chart-hover");
+    }
+    lastHoverRef.current = tokenIndex;
+    if (typeof tokenIndex === "number") {
+      const el = document.querySelector(`[data-token-index="${tokenIndex}"]`);
+      el?.classList.add("token-chart-hover");
+    }
+  };
+
   return (
     <div className="workspace-container">
       {/* Live region for a11y announcements */}
@@ -373,6 +389,7 @@ const Playground = () => {
               block: "center",
             });
           }}
+          onTokenHover={handleChartHover}
         />
       </main>
     </div>

@@ -208,7 +208,20 @@
   }
   
   .analysis-panel {
-    @apply w-80 border-l bg-surface/50 flex flex-col;
+    /* Wider analysis pane for dense charts (up to 128 tokens) */
+    @apply border-l bg-surface/50 flex flex-col;
+    width: 28rem; /* ~448px default */
+  }
+  @screen xl {
+    .analysis-panel { width: 32rem; } /* ~512px on wide screens */
+  }
+
+  /* External highlight applied when hovering points on the chart */
+  .token-chart-hover {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 2px;
+    border-radius: 0.125rem; /* rounded-sm */
+    background-color: color-mix(in oklab, hsl(var(--accent)) 10%, transparent);
   }
   
   /* Custom animations */

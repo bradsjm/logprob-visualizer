@@ -1,23 +1,52 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+/* eslint-disable import/order */
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  ReferenceArea,
+} from "recharts";
 
 import type { TokenLP } from "@/types/logprob";
-import { calculateQuantiles, getTokenColorClass, tokenColorToTextClass } from "@/lib/utils";
+import {
+  calculateQuantiles,
+  getTokenColorClass,
+  tokenColorToTextClass,
+} from "@/lib/utils";
 
 interface LogprobChartProps {
-  tokens: TokenLP[];
-  onTokenClick: (tokenIndex: number) => void;
+  readonly tokens: readonly TokenLP[];
+  readonly onTokenClick: (tokenIndex: number) => void;
+  readonly onTokenHover?: (tokenIndex: number | null) => void;
 }
 
-type ActivePayload = { payload: { index: number; logprob: number; prob: number; token: string; fullToken: string } };
+type ActivePayload = {
+  payload: {
+    index: number;
+    logprob: number;
+    prob: number;
+    token: string;
+    fullToken: string;
+  };
+};
 type ChartClickEvent = { activePayload?: ActivePayload[] };
 
-export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
+export const LogprobChart = ({
+  tokens,
+  onTokenClick,
+  onTokenHover,
+}: LogprobChartProps) => {
   const data = tokens.map((token, index) => ({
     index,
     logprob: token.logprob,
     prob: token.prob,
-    token: token.token.length > 10 ? token.token.slice(0, 10) + "..." : token.token,
-    fullToken: token.token
+    token:
+      token.token.length > 10 ? token.token.slice(0, 10) + "..." : token.token,
+    fullToken: token.token,
   }));
   const { min, max } = calculateQuantiles(tokens);
 
@@ -30,25 +59,41 @@ export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
   };
 
   type TooltipPayloadItem = ActivePayload;
-  type CustomTooltipProps = { active?: boolean; payload?: TooltipPayloadItem[]; label?: number | string };
+  type CustomTooltipProps = {
+    active?: boolean;
+    payload?: TooltipPayloadItem[];
+    label?: number | string;
+  };
 
   const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const tClass = tokenColorToTextClass(getTokenColorClass(data.logprob, min, max));
+      const tClass = tokenColorToTextClass(
+        getTokenColorClass(data.logprob, min, max)
+      );
       return (
         <div className="bg-popover border rounded-lg p-3 shadow-lg">
           <p className="font-medium">Token #{label}</p>
           <p className="text-sm">
-            <code className={`bg-muted px-1 rounded text-xs ${tClass}`}>"{data.fullToken}"</code>
+            <code className={`bg-muted px-1 rounded text-xs ${tClass}`}>
+              "{data.fullToken}"
+            </code>
           </p>
           <p className="text-sm text-muted-foreground">
-            Probability: <span className={`font-medium ${tClass}`}>{(data.prob * 100).toFixed(2)}%</span>
+            Probability:{" "}
+            <span className={`font-medium ${tClass}`}>
+              {(data.prob * 100).toFixed(2)}%
+            </span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Log probability: <span className={`font-medium ${tClass}`}>{data.logprob.toFixed(3)}</span>
+            Log probability:{" "}
+            <span className={`font-medium ${tClass}`}>
+              {data.logprob.toFixed(3)}
+            </span>
           </p>
-          <p className="text-xs text-muted-foreground pt-1">Click to scroll to token</p>
+          <p className="text-xs text-muted-foreground pt-1">
+            Click to scroll to token
+          </p>
         </div>
       );
     }
@@ -60,27 +105,84 @@ export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={data}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          margin={{ top: 16, right: 24, left: 30, bottom: 26 }}
           onClick={handlePointClick}
+          onMouseMove={(evt) => {
+            const maybe = evt as ChartClickEvent;
+            const idx = maybe?.activePayload?.[0]?.payload?.index;
+            if (typeof idx === "number") onTokenHover?.(idx);
+          }}
+          onMouseLeave={() => onTokenHover?.(null)}
         >
           <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis 
-            dataKey="index" 
+          <XAxis
+            dataKey="index"
             type="number"
             domain={["dataMin", "dataMax"]}
             tick={{ fontSize: 12 }}
+            tickMargin={6}
+            label={{
+              value: "Token Index",
+              position: "insideBottom",
+              dy: 10,
+              style: { fontSize: 12, fill: "hsl(var(--muted-foreground))" },
+            }}
           />
-          <YAxis 
-            domain={["dataMin", "dataMax"]}
+          <YAxis
+            domain={[0, 1]}
+            width={40}
             tick={{ fontSize: 12 }}
+            tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
+            ticks={[0, 0.25, 0.5, 0.75, 1]}
+            label={{
+              value: "Probability (%)",
+              angle: -90,
+              position: "left",
+              offset: 10,
+              style: {
+                fontSize: 12,
+                fill: "hsl(var(--muted-foreground))",
+                textAnchor: "middle",
+              },
+            }}
+          />
+          {/* Probability bands for quick reading */}
+          <ReferenceArea
+            y1={0}
+            y2={0.25}
+            fill="hsl(var(--token-low) / 0.06)"
+            strokeOpacity={0}
+          />
+          <ReferenceArea
+            y1={0.25}
+            y2={0.5}
+            fill="hsl(var(--token-med-low) / 0.06)"
+            strokeOpacity={0}
+          />
+          <ReferenceArea
+            y1={0.5}
+            y2={0.75}
+            fill="hsl(var(--token-med-high) / 0.06)"
+            strokeOpacity={0}
+          />
+          <ReferenceArea
+            y1={0.75}
+            y2={1}
+            fill="hsl(var(--token-high) / 0.06)"
+            strokeOpacity={0}
+          />
+          <ReferenceLine
+            y={0.5}
+            stroke="hsl(var(--border))"
+            strokeDasharray="4 4"
           />
           <Tooltip content={<CustomTooltip />} />
-          <Line 
-            type="monotone" 
-            dataKey="logprob" 
-            stroke="hsl(var(--accent))" 
+          <Line
+            type="linear"
+            dataKey="prob"
+            stroke="hsl(var(--accent))"
             strokeWidth={2}
-            dot={{ fill: "hsl(var(--accent))", strokeWidth: 2, r: 4 }}
+            dot={{ fill: "hsl(var(--accent))", strokeWidth: 2, r: 3 }}
             activeDot={{ r: 6, stroke: "hsl(var(--accent))", strokeWidth: 2 }}
           />
         </LineChart>

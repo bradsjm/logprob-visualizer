@@ -11,9 +11,10 @@ import type { CompletionLP } from "@/types/logprob";
 interface AnalysisPanelProps {
   completion: CompletionLP | null;
   onTokenClick: (tokenIndex: number) => void;
+  onTokenHover?: (tokenIndex: number | null) => void;
 }
 
-export const AnalysisPanel = ({ completion, onTokenClick }: AnalysisPanelProps) => {
+export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: AnalysisPanelProps) => {
   const [showRawJson, setShowRawJson] = useState(false);
 
   if (!completion) {
@@ -78,6 +79,7 @@ export const AnalysisPanel = ({ completion, onTokenClick }: AnalysisPanelProps) 
             <LogprobChart 
               tokens={completion.tokens}
               onTokenClick={onTokenClick}
+              onTokenHover={onTokenHover}
             />
           </CardContent>
         </Card>
