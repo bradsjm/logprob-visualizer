@@ -1,5 +1,6 @@
 import { Send, Settings } from "lucide-react";
-import { useState, useRef } from "react";
+import type React from "react";
+import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 
 import { ParametersDrawer } from "./ParametersDrawer";
 
@@ -13,18 +14,37 @@ interface ComposerProps {
   branchContext: BranchContext | null;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
+  showWhitespaceOverlays?: boolean;
+  showPunctuationOverlays?: boolean;
+  onReadabilityChange?: (patch: { showWhitespace?: boolean; showPunctuation?: boolean }) => void;
 }
 
-export const Composer = ({ 
+export interface ComposerHandle {
+  focus: () => void;
+  openParameters: () => void;
+}
+
+export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer(
+  { 
   onSendMessage, 
   isLoading, 
   branchContext,
   parameters,
-  onParametersChange 
-}: ComposerProps) => {
+  onParametersChange,
+  showWhitespaceOverlays = true,
+  showPunctuationOverlays = true,
+  onReadabilityChange,
+}: ComposerProps, ref) {
   const [message, setMessage] = useState("");
   const [showParameters, setShowParameters] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus();
+    },
+    openParameters: () => setShowParameters(true),
+  }), []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +141,10 @@ export const Composer = ({
         onClose={() => setShowParameters(false)}
         parameters={parameters}
         onParametersChange={onParametersChange}
+        showWhitespaceOverlays={showWhitespaceOverlays}
+        showPunctuationOverlays={showPunctuationOverlays}
+        onReadabilityChange={onReadabilityChange}
       />
     </div>
   );
-};
+});

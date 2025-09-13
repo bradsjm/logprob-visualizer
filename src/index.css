@@ -178,6 +178,12 @@
   .token-high-prob {
     background-color: hsl(var(--token-high) / 0.15);
   }
+
+  /* Text color helpers matching token palette */
+  .text-token-low { color: hsl(var(--token-low)); }
+  .text-token-med-low { color: hsl(var(--token-med-low)); }
+  .text-token-med-high { color: hsl(var(--token-med-high)); }
+  .text-token-high { color: hsl(var(--token-high)); }
   
   /* Chat bubbles */
   .chat-bubble-user {

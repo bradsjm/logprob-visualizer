@@ -1,6 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import type { TokenLP } from "@/types/logprob";
+import { calculateQuantiles, getTokenColorClass, tokenColorToTextClass } from "@/lib/utils";
 
 interface LogprobChartProps {
   tokens: TokenLP[];
@@ -18,6 +19,7 @@ export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
     token: token.token.length > 10 ? token.token.slice(0, 10) + "..." : token.token,
     fullToken: token.token
   }));
+  const { min, max } = calculateQuantiles(tokens);
 
   const handlePointClick = (evt: unknown) => {
     const maybe = evt as ChartClickEvent;
@@ -33,17 +35,18 @@ export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
   const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const tClass = tokenColorToTextClass(getTokenColorClass(data.logprob, min, max));
       return (
         <div className="bg-popover border rounded-lg p-3 shadow-lg">
           <p className="font-medium">Token #{label}</p>
           <p className="text-sm">
-            <code className="bg-muted px-1 rounded text-xs">"{data.fullToken}"</code>
+            <code className={`bg-muted px-1 rounded text-xs ${tClass}`}>"{data.fullToken}"</code>
           </p>
           <p className="text-sm text-muted-foreground">
-            Probability: <span className="font-medium">{(data.prob * 100).toFixed(2)}%</span>
+            Probability: <span className={`font-medium ${tClass}`}>{(data.prob * 100).toFixed(2)}%</span>
           </p>
           <p className="text-sm text-muted-foreground">
-            Log probability: <span className="font-medium">{data.logprob.toFixed(3)}</span>
+            Log probability: <span className={`font-medium ${tClass}`}>{data.logprob.toFixed(3)}</span>
           </p>
           <p className="text-xs text-muted-foreground pt-1">Click to scroll to token</p>
         </div>

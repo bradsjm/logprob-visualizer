@@ -10,6 +10,8 @@ interface ChatTranscriptProps {
   isLoading: boolean;
   onTokenClick: (tokenIndex: number, newToken: string) => void;
   currentCompletion: CompletionLP | null;
+  showWhitespaceOverlays?: boolean;
+  showPunctuationOverlays?: boolean;
 }
 
 export const ChatTranscript = ({ 
@@ -17,6 +19,8 @@ export const ChatTranscript = ({
   isLoading, 
   onTokenClick, 
   currentCompletion: _currentCompletion,
+  showWhitespaceOverlays = true,
+  showPunctuationOverlays = true,
 }: ChatTranscriptProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +58,8 @@ export const ChatTranscript = ({
                 <TokenText 
                   tokens={message.tokens}
                   onTokenClick={onTokenClick}
+                  showWhitespaceOverlays={showWhitespaceOverlays}
+                  showPunctuationOverlays={showPunctuationOverlays}
                 />
               ) : (
                 <p className="whitespace-pre-wrap">{message.content}</p>

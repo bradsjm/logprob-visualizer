@@ -6,6 +6,7 @@ import { LogprobChart } from "./LogprobChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { CompletionLP } from "@/types/logprob";
+// (legend colors are applied within child components/tooltips)
 
 interface AnalysisPanelProps {
   completion: CompletionLP | null;
@@ -34,6 +35,37 @@ export const AnalysisPanel = ({ completion, onTokenClick }: AnalysisPanelProps) 
   return (
     <div className="analysis-panel">
       <div className="p-4 space-y-4 overflow-y-auto">
+        {/* Legend moved to top */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Color Legend</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 bg-token-high/15 border border-token-high/30 rounded"></div>
+                <span>High probability (&gt; 75th percentile)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 bg-token-med-high/15 border border-token-med-high/30 rounded"></div>
+                <span>Medium-high probability</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 bg-token-med-low/15 border border-token-med-low/30 rounded"></div>
+                <span>Medium-low probability</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 bg-token-low/15 border-b-2 border-dashed border-token-low rounded"></div>
+                <span>Low probability (&lt; 25th percentile)</span>
+              </div>
+            </div>
+            <div className="pt-2 border-t text-xs text-muted-foreground flex items-start gap-2">
+              <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+              <span>Dashed underlines indicate tokens with &lt; 50% probability</span>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Chart */}
         <Card>
           <CardHeader className="pb-3">
@@ -116,37 +148,6 @@ export const AnalysisPanel = ({ completion, onTokenClick }: AnalysisPanelProps) 
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
-        </Card>
-
-        {/* Legend */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Color Legend</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-high/15 border border-token-high/30 rounded"></div>
-                <span>High probability (&gt; 75th percentile)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-med-high/15 border border-token-med-high/30 rounded"></div>
-                <span>Medium-high probability</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-med-low/15 border border-token-med-low/30 rounded"></div>
-                <span>Medium-low probability</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-low/15 border-b-2 border-dashed border-token-low rounded"></div>
-                <span>Low probability (&lt; 25th percentile)</span>
-              </div>
-            </div>
-            <div className="pt-2 border-t text-xs text-muted-foreground flex items-start gap-2">
-              <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-              <span>Dashed underlines indicate tokens with &lt; 50% probability</span>
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>

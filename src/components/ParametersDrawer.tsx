@@ -5,6 +5,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import type { RunParameters } from "@/types/logprob";
 
 interface ParametersDrawerProps {
@@ -12,9 +13,12 @@ interface ParametersDrawerProps {
   onClose: () => void;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
+  showWhitespaceOverlays?: boolean;
+  showPunctuationOverlays?: boolean;
+  onReadabilityChange?: (patch: { showWhitespace?: boolean; showPunctuation?: boolean }) => void;
 }
 
-export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClose }: ParametersDrawerProps) => {
+export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClose, showWhitespaceOverlays = true, showPunctuationOverlays = true, onReadabilityChange }: ParametersDrawerProps) => {
   const updateParameter = (key: keyof RunParameters, value: number) => {
     onParametersChange({ ...parameters, [key]: value });
   };
@@ -142,7 +146,26 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
               </p>
             </div>
           </div>
-          {null}
+          {/* Readability */}
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Readability</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="toggle-whitespace">Show whitespace overlays</Label>
+                  <p className="text-xs text-muted-foreground">Display overlays for spaces and newlines to make gaps visible.</p>
+                </div>
+                <Switch id="toggle-whitespace" checked={showWhitespaceOverlays} onCheckedChange={(v) => onReadabilityChange?.({ showWhitespace: v })} />
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="toggle-punct">Show punctuation overlays</Label>
+                  <p className="text-xs text-muted-foreground">Display overlays for punctuation tokens (., !, ?, etc.).</p>
+                </div>
+                <Switch id="toggle-punct" checked={showPunctuationOverlays} onCheckedChange={(v) => onReadabilityChange?.({ showPunctuation: v })} />
+              </div>
+            </div>
+          </div>
         </div>
       </DrawerContent>
     </Drawer>

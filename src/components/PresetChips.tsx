@@ -15,13 +15,24 @@ export const PresetChips = ({ onApplyPreset }: PresetChipsProps) => {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="outline" size="sm" onClick={applyDeterministic} aria-label="Apply Deterministic preset">
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 px-2 text-xs"
+        onClick={applyDeterministic}
+        aria-label="Apply Deterministic preset"
+      >
         Deterministic
       </Button>
-      <Button variant="outline" size="sm" onClick={applyCreative} aria-label="Apply Creative preset">
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 px-2 text-xs"
+        onClick={applyCreative}
+        aria-label="Apply Creative preset"
+      >
         Creative
       </Button>
     </div>
   );
 };
-
