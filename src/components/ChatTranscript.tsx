@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 import { TokenText } from "./TokenText";
+import { calculateQuantiles } from "@/lib/utils";
 
 import type { ChatMessage, CompletionLP } from "@/types/logprob";
 
@@ -13,6 +14,29 @@ interface ChatTranscriptProps {
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
 }
+
+interface AssistantTokensProps {
+  readonly tokens: NonNullable<ChatMessage["tokens"]>;
+  readonly onTokenClick: (tokenIndex: number, newToken: string) => void;
+  readonly showWhitespaceOverlays: boolean;
+  readonly showPunctuationOverlays: boolean;
+  readonly scrollContainerRef: React.RefObject<HTMLDivElement>;
+}
+
+const AssistantTokens = ({ tokens, onTokenClick, showWhitespaceOverlays, showPunctuationOverlays, scrollContainerRef }: AssistantTokensProps) => {
+  // Keep color scale stable across progressive rendering by using global quantiles.
+  const q = calculateQuantiles(tokens);
+  return (
+    <TokenText
+      tokens={tokens}
+      onTokenClick={onTokenClick}
+      showWhitespaceOverlays={showWhitespaceOverlays}
+      showPunctuationOverlays={showPunctuationOverlays}
+      scrollContainerRef={scrollContainerRef as unknown as React.RefObject<HTMLElement>}
+      quantiles={q}
+    />
+  );
+};
 
 export const ChatTranscript = ({ 
   messages, 
@@ -55,11 +79,12 @@ export const ChatTranscript = ({
             <div className="chat-bubble-assistant">
               <p className="text-sm font-medium text-card-foreground mb-2">Assistant</p>
               {message.tokens ? (
-                <TokenText 
+                <AssistantTokens
                   tokens={message.tokens}
                   onTokenClick={onTokenClick}
                   showWhitespaceOverlays={showWhitespaceOverlays}
                   showPunctuationOverlays={showPunctuationOverlays}
+                  scrollContainerRef={scrollRef}
                 />
               ) : (
                 <p className="whitespace-pre-wrap">{message.content}</p>

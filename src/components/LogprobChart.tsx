@@ -1,4 +1,5 @@
 /* eslint-disable import/order */
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -48,7 +49,7 @@ export const LogprobChart = ({
       token.token.length > 10 ? token.token.slice(0, 10) + "..." : token.token,
     fullToken: token.token,
   }));
-  const { min, max } = calculateQuantiles(tokens);
+  const { min, max } = useMemo(() => calculateQuantiles(tokens), [tokens]);
 
   const handlePointClick = (evt: unknown) => {
     const maybe = evt as ChartClickEvent;

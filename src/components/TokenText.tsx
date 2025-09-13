@@ -1,5 +1,5 @@
 import type React from "react";
-import { useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { TokenTooltip } from "./TokenTooltip";
 
@@ -11,16 +11,60 @@ interface TokenTextProps {
   onTokenClick: (tokenIndex: number, newToken: string) => void;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
+  /** Optional scroll container to drive progressive virtualization. */
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
+  /** Optional precomputed quantiles for consistent coloring across chunks. */
+  quantiles?: { readonly min: number; readonly max: number };
 }
 
 // (moved to utils)
 
-export const TokenText = ({ tokens, onTokenClick, showWhitespaceOverlays = true, showPunctuationOverlays = true }: TokenTextProps) => {
+export const TokenText = ({ tokens, onTokenClick, showWhitespaceOverlays = true, showPunctuationOverlays = true, scrollContainerRef, quantiles }: TokenTextProps) => {
   const [pinnedTooltip, setPinnedTooltip] = useState<number | null>(null);
   const [hoveredToken, setHoveredToken] = useState<number | null>(null);
   const spanRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  const { min, max } = useMemo(() => calculateQuantiles(tokens), [tokens]);
+  // Quantiles are memoized and can be provided from parent to keep color scale stable
+  const { min, max } = useMemo(() => (quantiles ?? calculateQuantiles(tokens)), [tokens, quantiles]);
+
+  // Progressive virtualization: render in slices when token count is large to avoid
+  // mounting hundreds of spans at once. We increment on intersection with a sentinel.
+  const VIRTUALIZE_THRESHOLD = 200;
+  const SLICE_INCREMENT = 200;
+  const [visibleCount, setVisibleCount] = useState<number>(() => (tokens.length > VIRTUALIZE_THRESHOLD ? VIRTUALIZE_THRESHOLD : tokens.length));
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // Reset visible count when tokens set changes (e.g., new completion)
+    setVisibleCount(tokens.length > VIRTUALIZE_THRESHOLD ? VIRTUALIZE_THRESHOLD : tokens.length);
+  }, [tokens]);
+
+  useEffect(() => {
+    if (visibleCount >= tokens.length) return; // nothing to observe
+    const root = scrollContainerRef?.current ?? null;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    let rafId: number | null = null;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
+          // Batch the state update into next animation frame to minimize layout thrash
+          if (rafId !== null) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            setVisibleCount((prev) => Math.min(prev + SLICE_INCREMENT, tokens.length));
+          });
+        }
+      },
+      { root, rootMargin: "800px 0px", threshold: 0 },
+    );
+    io.observe(sentinel);
+    return () => {
+      io.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, [visibleCount, tokens.length, scrollContainerRef]);
 
   const handleTokenClick = (tokenIndex: number, token: string) => {
     if (pinnedTooltip === tokenIndex) {
@@ -40,9 +84,10 @@ export const TokenText = ({ tokens, onTokenClick, showWhitespaceOverlays = true,
     }
   };
 
+  const renderCount = visibleCount;
   return (
-    <div className="relative leading-relaxed">
-      {tokens.map((token, index) => {
+    <div className="relative leading-relaxed" aria-live="polite">
+      {tokens.slice(0, renderCount).map((token, index) => {
         const tokenIsWhitespace = isWhitespaceToken(token.token);
         const tokenIsPunct = isPunctuationToken(token.token);
 
@@ -65,6 +110,7 @@ export const TokenText = ({ tokens, onTokenClick, showWhitespaceOverlays = true,
               aria-pressed={pinnedTooltip === index || undefined}
               tabIndex={0}
               aria-describedby={showTooltip ? `tooltip-${index}` : undefined}
+              aria-label={`Token ${JSON.stringify(token.token)}, probability ${(token.prob * 100).toFixed(1)}%`}
               onMouseEnter={() => setHoveredToken(index)}
               onMouseLeave={() => setHoveredToken(null)}
               onClick={() => handleTokenClick(index, token.token)}
@@ -90,6 +136,9 @@ export const TokenText = ({ tokens, onTokenClick, showWhitespaceOverlays = true,
           </span>
         );
       })}
+      {renderCount < tokens.length && (
+        <div ref={sentinelRef} aria-hidden className="h-4" />
+      )}
     </div>
   );
 };
