@@ -31,6 +31,25 @@ await app.register(rateLimit, { max: 60, timeWindow: "1 minute" });
 
 // Types validated inline at route; dedicated ModelsResponse type removed to avoid unused variable.
 
+// Models config (loaded from JSON with validation)
+const ModelItemSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+});
+const ModelsSchema = z.array(ModelItemSchema);
+type ModelItem = z.infer<typeof ModelItemSchema>;
+
+const MODELS_FILE = path.resolve(process.cwd(), "server", "models.json");
+let availableModels: ReadonlyArray<ModelItem> = Object.freeze([]);
+try {
+  const raw = fs.readFileSync(MODELS_FILE, "utf-8");
+  const parsed = JSON.parse(raw);
+  availableModels = Object.freeze(ModelsSchema.parse(parsed));
+} catch (err) {
+  // Log using Fastify logger and keep a minimal fallback
+  app.log.error({ err }, "Failed to load models.json");
+}
+
 const CompleteRequest = z.object({
   messages: z
     .array(
@@ -78,13 +97,11 @@ app.get("/api/health", async (req, reply) => {
 });
 
 app.get("/api/models", async (_req, reply) => {
-  const models = [
-    { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-    { id: "gpt-4.1-nano-2025-04-14", name: "GPT-4.1 Nano" },
-    { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
-    { id: "gpt-4.1", name: "GPT-4.1" },
-  ];
-  reply.send(models);
+  if (availableModels.length === 0) {
+    // Provide a clear signal but keep endpoint functional
+    app.log.warn("No models loaded from models.json; returning empty list");
+  }
+  reply.send(availableModels);
 });
 
 app.post("/api/complete", async (req, reply) => {
