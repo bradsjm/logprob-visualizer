@@ -259,13 +259,7 @@ app.post("/api/complete/stream", async (req, reply) => {
   };
 
   try {
-    // Type-safe parsing for logprob deltas coming from the SDK helper events
-    const LogprobAltSchema = z.object({ token: z.string(), logprob: z.number() });
-    const LogprobDeltaSchema = z.object({
-      token: z.string().optional().default(""),
-      logprob: z.number().optional().default(Number.NEGATIVE_INFINITY),
-      top_logprobs: z.array(LogprobAltSchema).optional().default([]),
-    });
+    // Logprob deltas arrive as arrays; we will validate minimally per item
 
     let aggregated = "";
     const tokens: Array<{
@@ -301,7 +295,15 @@ app.post("/api/complete/stream", async (req, reply) => {
     // Token logprobs deltas (array per event)
     stream.on(
       "logprobs.content.delta",
-      ({ content }: { content: Array<{ token: string; logprob: number; top_logprobs?: Array<{ token: string; logprob: number }> }> }) => {
+      ({
+        content,
+      }: {
+        content: Array<{
+          token: string;
+          logprob: number;
+          top_logprobs?: Array<{ token: string; logprob: number }>;
+        }>;
+      }) => {
         for (const item of content) {
           const tokenOut = {
             index: tokenIndex++,
@@ -320,31 +322,61 @@ app.post("/api/complete/stream", async (req, reply) => {
       }
     );
 
-    stream.on("end", () => {
-      const latency = Date.now() - start;
-      // We may not have usage here; keep zeros for consistency with prior fallback
-      write({
-        type: "done",
-        completion: {
-          text: aggregated,
-          tokens,
-          finish_reason: "stop",
-          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-          model: body.model,
-          latency,
-          force_prefix_echo,
-        },
-      });
-      end();
-    });
+    // Remove naive end handler; we will emit the final completion after we
+    // await the SDK's finalized object to capture accurate usage.
 
     stream.on("error", (err: unknown) => {
       req.log.error({ err }, "Stream error");
       write({ type: "done", error: (err as Error).message });
       end();
     });
-    // Keep the route alive until the stream finishes
+    // Keep the route alive until the stream finishes, then emit final object
     await stream.done();
+    const latency = Date.now() - start;
+    try {
+      const final = await stream.finalChatCompletion();
+      const choice = final.choices[0];
+      const text = choice?.message?.content ?? aggregated;
+      const finish = choice?.finish_reason ?? "stop";
+      const usage = final.usage ?? {
+        prompt_tokens: 0,
+        completion_tokens: tokens.length,
+        total_tokens: (final.usage?.prompt_tokens ?? 0) + tokens.length,
+      };
+      write({
+        type: "done",
+        completion: {
+          text,
+          tokens,
+          finish_reason: finish,
+          usage,
+          model: final.model ?? body.model,
+          latency,
+          force_prefix_echo,
+        },
+      });
+    } catch {
+      // If we failed to obtain a final completion (e.g., upstream closed early),
+      // emit a best-effort payload with derived token counts.
+      write({
+        type: "done",
+        completion: {
+          text: aggregated,
+          tokens,
+          finish_reason: "stop",
+          usage: {
+            prompt_tokens: 0,
+            completion_tokens: tokens.length,
+            total_tokens: tokens.length,
+          },
+          model: body.model,
+          latency,
+          force_prefix_echo,
+        },
+      });
+    } finally {
+      end();
+    }
   } catch (err) {
     req.log.error({ err }, "Stream error");
     write({ type: "done", error: (err as Error).message });

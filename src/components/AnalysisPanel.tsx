@@ -13,15 +13,15 @@ import { useState } from "react";
 
 import { LogprobChart } from "./LogprobChart";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { CompletionLP } from "@/types/logprob";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
+import type { CompletionLP } from "@/types/logprob";
 // (legend colors are applied within child components/tooltips)
 
 interface AnalysisPanelProps {
@@ -66,6 +66,8 @@ export const AnalysisPanel = ({
           : r === "tool_calls"
             ? "text-[hsl(var(--info))]"
             : "text-foreground";
+
+  // Use server-provided usage values directly.
 
   return (
     <div className="analysis-panel">
@@ -135,21 +137,15 @@ export const AnalysisPanel = ({
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="space-y-1">
                 <div className="text-muted-foreground">Prompt tokens</div>
-                <div className="font-medium">
-                  {completion.usage.prompt_tokens}
-                </div>
+                <div className="font-medium">{completion.usage.prompt_tokens}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Completion tokens</div>
-                <div className="font-medium">
-                  {completion.usage.completion_tokens}
-                </div>
+                <div className="font-medium">{completion.usage.completion_tokens}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Total tokens</div>
-                <div className="font-medium">
-                  {completion.usage.total_tokens}
-                </div>
+                <div className="font-medium">{completion.usage.total_tokens}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Finish reason</div>

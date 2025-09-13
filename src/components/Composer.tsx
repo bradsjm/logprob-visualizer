@@ -11,12 +11,12 @@ import {
 import { ParametersDrawer } from "./ParametersDrawer";
 
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Textarea } from "@/components/ui/textarea";
 import type { RunParameters } from "@/types/logprob";
 
 interface ComposerProps {

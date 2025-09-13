@@ -3,8 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import type { TokenLP } from "@/types/logprob";
 import { getTokenColorClass, tokenColorToTextClass } from "@/lib/utils";
+import type { TokenLP } from "@/types/logprob";
 
 interface TokenTooltipProps {
   token: TokenLP;

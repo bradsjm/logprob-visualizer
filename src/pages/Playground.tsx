@@ -17,15 +17,10 @@ import { PresetChips } from "@/components/PresetChips";
 import { toast } from "@/components/ui/sonner";
 import { useModels } from "@/hooks/useModels";
 import { transport } from "@/lib/transport";
-import type { Stream, StreamEvent } from "@/types/transport";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
-import type {
-  CompletionLP,
-  ModelInfo,
-  RunParameters,
-  TokenLP,
-  ChatMessage,
-} from "@/types/logprob";
+import type { TokenLP } from "@/types/logprob";
+import type { CompletionLP, ModelInfo, RunParameters, ChatMessage } from "@/types/logprob";
+import type { Stream, StreamEvent } from "@/types/transport";
 
 // Helper to build a consistent mock completion used for seeding and demo runs
 const buildMockCompletion = (modelId: string): CompletionLP => ({
@@ -336,6 +331,39 @@ const Playground = () => {
       } else {
         // Streaming mode
         let streamText = "";
+        // Buffer incoming tokens; flush at most once per animation frame
+        const tokensBufferRef = { current: [] as TokenLP[] };
+        let flushScheduled = false;
+        let haveShownTokens = false;
+
+        const scheduleFlush = () => {
+          if (flushScheduled) return;
+          flushScheduled = true;
+          requestAnimationFrame(() => {
+            flushScheduled = false;
+            const buffered = tokensBufferRef.current;
+            if (buffered.length === 0) return;
+            // First time tokens arrive, switch message view to TokenText
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1] as ChatMessage | undefined;
+              if (!last) return prev;
+              const existingTokens = last.tokens as TokenLP[] | undefined;
+              const merged = existingTokens && existingTokens.length > 0
+                ? [...existingTokens, ...buffered]
+                : [...buffered];
+              next[next.length - 1] = {
+                role: "assistant" as const,
+                content: streamText,
+                tokens: merged,
+              };
+              return next;
+            });
+            tokensBufferRef.current = [];
+            haveShownTokens = true;
+          });
+        };
+
         const assistantMessage = { role: "assistant" as const, content: streamText };
         setMessages((prev) => [...prev, assistantMessage]);
         const stream = result as Stream<StreamEvent>;
@@ -344,12 +372,18 @@ const Playground = () => {
           for await (const evt of stream) {
             if (evt.type === "delta") {
               streamText += evt.delta;
-              setMessages((prev) => {
-                const next = [...prev];
-                next[next.length - 1] = { role: "assistant" as const, content: streamText };
-                return next;
-              });
+              // Only update text if we haven't switched to token view yet
+              if (!haveShownTokens) {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  next[next.length - 1] = { role: "assistant" as const, content: streamText };
+                  return next;
+                });
+              }
               setLiveMessage("Streaming response…");
+            } else if (evt.type === "logprobs") {
+              tokensBufferRef.current.push(evt.delta);
+              scheduleFlush();
             } else if (evt.type === "done") {
               if (evt.error) {
                 toast("Streaming error", { description: evt.error });

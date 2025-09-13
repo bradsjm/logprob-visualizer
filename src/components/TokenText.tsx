@@ -3,13 +3,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { TokenTooltip } from "./TokenTooltip";
 
-import type { TokenLP } from "@/types/logprob";
 import {
   isPunctuationToken,
   isWhitespaceToken,
   calculateQuantiles,
   getTokenColorClass,
 } from "@/lib/utils";
+import type { TokenLP } from "@/types/logprob";
 
 interface TokenTextProps {
   tokens: TokenLP[];
@@ -137,7 +137,7 @@ export const TokenText = ({
                 spanRefs.current[index] = el;
               }}
               data-token-index={index}
-              className={`token-span ${colorClass} ${isLowProb ? "border-b-2 border-dashed" : ""}`}
+              className={`token-span ${colorClass} border-b-2 ${isLowProb ? "border-dashed border-border" : "border-transparent"}`}
               role="button"
               aria-pressed={pinnedTooltip === index || undefined}
               tabIndex={0}

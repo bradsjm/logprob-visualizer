@@ -250,6 +250,8 @@
 
   /* Themed scrollbar for the transcript panel */
   .transcript-scroll {
+    /* Prevent scroll anchoring jitter while content above/below reflows */
+    overflow-anchor: none;
     /* Firefox */
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;

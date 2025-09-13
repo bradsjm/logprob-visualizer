@@ -1,6 +1,6 @@
+import type { CompleteParams } from "@/lib/transport/rest";
 import type { CompletionLP } from "@/types/logprob";
 import type { Stream, StreamEvent, Transport } from "@/types/transport";
-import type { CompleteParams } from "@/lib/transport/rest";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 

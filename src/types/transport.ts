@@ -1,5 +1,5 @@
-import type { CompletionLP } from "@/types/logprob";
 import type { CompleteParams } from "@/lib/transport/rest";
+import type { CompletionLP, TokenLP } from "@/types/logprob";
 
 export interface StreamDoneEvent {
   readonly type: "done";
@@ -12,7 +12,12 @@ export interface StreamDeltaEvent {
   readonly delta: string; // incremental text
 }
 
-export type StreamEvent = StreamDeltaEvent | StreamDoneEvent;
+export interface StreamLogprobsEvent {
+  readonly type: "logprobs";
+  readonly delta: TokenLP; // one token at a time from server
+}
+
+export type StreamEvent = StreamDeltaEvent | StreamLogprobsEvent | StreamDoneEvent;
 
 export interface Stream<TEvent> extends AsyncIterable<TEvent> {
   readonly abort: () => void;
@@ -25,4 +30,3 @@ export interface Transport {
    */
   complete(params: Readonly<CompleteParams>): Promise<CompletionLP> | Stream<StreamEvent>;
 }
-
