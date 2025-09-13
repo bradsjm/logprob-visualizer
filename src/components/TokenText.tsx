@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
+
 import { TokenTooltip } from "./TokenTooltip";
+
 import type { TokenLP } from "@/types/logprob";
 
 interface TokenTextProps {

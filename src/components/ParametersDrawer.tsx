@@ -1,7 +1,10 @@
+import { X } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import type { RunParameters } from "@/types/logprob";
 
 interface ParametersDrawerProps {
@@ -11,21 +14,29 @@ interface ParametersDrawerProps {
   onParametersChange: (params: RunParameters) => void;
 }
 
-export const ParametersDrawer = ({ isOpen, parameters, onParametersChange }: ParametersDrawerProps) => {
+export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClose }: ParametersDrawerProps) => {
   const updateParameter = (key: keyof RunParameters, value: number) => {
     onParametersChange({ ...parameters, [key]: value });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <Collapsible open={isOpen}>
-      <CollapsibleContent className="border-t bg-surface/30">
-        <div className="px-6 py-4 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">Generation Parameters</h3>
-          </div>
+    <Drawer open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DrawerContent className="bg-background">
+        <DrawerHeader className="relative">
+          <DrawerTitle>Generation Parameters</DrawerTitle>
+          <DrawerClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-2 h-8 w-8"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DrawerClose>
+        </DrawerHeader>
 
+        <div className="px-6 pb-4 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Temperature */}
             <div className="space-y-2">
@@ -131,8 +142,9 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange }: Par
               </p>
             </div>
           </div>
+          {null}
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </DrawerContent>
+    </Drawer>
   );
 };

@@ -1,8 +1,10 @@
+import { Send, Settings } from "lucide-react";
 import { useState, useRef } from "react";
+
+import { ParametersDrawer } from "./ParametersDrawer";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ParametersDrawer } from "./ParametersDrawer";
-import { Send, Settings } from "lucide-react";
 import type { BranchContext, RunParameters } from "@/types/logprob";
 
 interface ComposerProps {
@@ -26,8 +28,11 @@ export const Composer = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || isLoading) return;
+    submitMessage();
+  };
 
+  const submitMessage = () => {
+    if (!message.trim() || isLoading) return;
     onSendMessage(message);
     setMessage("");
   };
@@ -35,7 +40,7 @@ export const Composer = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
-      handleSubmit(e as any);
+      submitMessage();
     }
   };
 

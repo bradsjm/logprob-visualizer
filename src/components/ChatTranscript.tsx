@@ -1,7 +1,9 @@
-import { useRef, useEffect } from "react";
-import { TokenText } from "./TokenText";
-import type { ChatMessage, CompletionLP } from "@/types/logprob";
 import { Loader2 } from "lucide-react";
+import { useRef, useEffect } from "react";
+
+import { TokenText } from "./TokenText";
+
+import type { ChatMessage, CompletionLP } from "@/types/logprob";
 
 interface ChatTranscriptProps {
   messages: ChatMessage[];
@@ -14,7 +16,7 @@ export const ChatTranscript = ({
   messages, 
   isLoading, 
   onTokenClick, 
-  currentCompletion 
+  currentCompletion: _currentCompletion,
 }: ChatTranscriptProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 

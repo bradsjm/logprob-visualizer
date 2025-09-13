@@ -1,10 +1,14 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
 import type { TokenLP } from "@/types/logprob";
 
 interface LogprobChartProps {
   tokens: TokenLP[];
   onTokenClick: (tokenIndex: number) => void;
 }
+
+type ActivePayload = { payload: { index: number; logprob: number; prob: number; token: string; fullToken: string } };
+type ChartClickEvent = { activePayload?: ActivePayload[] };
 
 export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
   const data = tokens.map((token, index) => ({
@@ -15,14 +19,18 @@ export const LogprobChart = ({ tokens, onTokenClick }: LogprobChartProps) => {
     fullToken: token.token
   }));
 
-  const handlePointClick = (data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const tokenIndex = data.activePayload[0].payload.index;
+  const handlePointClick = (evt: unknown) => {
+    const maybe = evt as ChartClickEvent;
+    if (maybe && Array.isArray(maybe.activePayload) && maybe.activePayload[0]) {
+      const tokenIndex = maybe.activePayload[0].payload.index;
       onTokenClick(tokenIndex);
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  type TooltipPayloadItem = ActivePayload;
+  type CustomTooltipProps = { active?: boolean; payload?: TooltipPayloadItem[]; label?: number | string };
+
+  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (

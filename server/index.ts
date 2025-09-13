@@ -1,8 +1,8 @@
-import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import { z } from "zod";
+import Fastify from "fastify";
 import OpenAI from "openai";
+import { z } from "zod";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -12,7 +12,7 @@ const app = Fastify({ logger: true });
 await app.register(cors, { origin: true, credentials: false });
 await app.register(rateLimit, { max: 60, timeWindow: "1 minute" });
 
-const ModelsResponse = z.object({ id: z.string(), name: z.string() }).array();
+// Types validated inline at route; dedicated ModelsResponse type removed to avoid unused variable.
 
 const CompleteRequest = z.object({
   messages: z

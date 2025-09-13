@@ -1,4 +1,7 @@
+/* eslint-disable import/order */
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
+import animate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -104,5 +107,5 @@ export default {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
+  plugins: [typography, animate],
 } satisfies Config;

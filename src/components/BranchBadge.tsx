@@ -1,6 +1,7 @@
+import { X, GitBranch } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, GitBranch } from "lucide-react";
 import type { BranchContext } from "@/types/logprob";
 
 interface BranchBadgeProps {

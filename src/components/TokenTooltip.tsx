@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
+
+import { Button } from "@/components/ui/button";
 import type { TokenLP } from "@/types/logprob";
 
 interface TokenTooltipProps {

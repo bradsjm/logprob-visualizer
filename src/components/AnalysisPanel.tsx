@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogprobChart } from "./LogprobChart";
 import { ChevronDown, BarChart, Clock, Zap, AlertCircle } from "lucide-react";
+import { useState } from "react";
+
+import { LogprobChart } from "./LogprobChart";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { CompletionLP } from "@/types/logprob";
 
 interface AnalysisPanelProps {
