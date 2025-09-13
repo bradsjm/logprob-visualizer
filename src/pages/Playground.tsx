@@ -9,6 +9,7 @@ import { ParameterBadges } from "@/components/ParameterBadges";
 import { PresetChips } from "@/components/PresetChips";
 import { toast } from "@/components/ui/sonner";
 import { useModels } from "@/hooks/useModels";
+import { complete } from "@/lib/transport/rest";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
 import type {
   CompletionLP,
@@ -264,24 +265,36 @@ const Playground = () => {
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setIsLoading(true);
+    setLiveMessage("Sending request...");
 
     try {
-      // Mock API call - replace with actual OpenAI API
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Mock response with token probabilities
-      const mockResponse: CompletionLP = buildMockCompletion(selectedModel.id);
+      const response = await complete({
+        messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+        model: selectedModel.id,
+        temperature: runParameters.temperature,
+        top_p: runParameters.top_p,
+        presence_penalty: runParameters.presence_penalty,
+        frequency_penalty: runParameters.frequency_penalty,
+        max_tokens: runParameters.max_tokens,
+        top_logprobs: runParameters.top_logprobs,
+      });
 
       const assistantMessage = {
         role: "assistant" as const,
-        content: mockResponse.text,
-        tokens: mockResponse.tokens,
+        content: response.text,
+        tokens: response.tokens,
       };
 
       setMessages([...newMessages, assistantMessage]);
-      setCurrentCompletion(mockResponse);
+      setCurrentCompletion(response);
+      setLiveMessage("Response ready");
     } catch (error) {
-      console.error("Error generating response:", error);
+      const message = (error as Error).message;
+      console.error("Error generating response:", message);
+      toast("Request failed", { description: message });
+      setLiveMessage("Request failed. Focus returned to composer.");
+      // Accessibility: restore focus to composer on error
+      composerRef.current?.focus();
     } finally {
       setIsLoading(false);
     }
@@ -420,6 +433,12 @@ const Playground = () => {
             onReadabilityChange={(patch) => {
               if (typeof patch.showWhitespace === "boolean") setShowWhitespaceOverlays(patch.showWhitespace);
               if (typeof patch.showPunctuation === "boolean") setShowPunctuationOverlays(patch.showPunctuation);
+            }}
+            onClearHistory={() => {
+              setMessages([]);
+              setCurrentCompletion(null);
+              setLiveMessage("History cleared");
+              composerRef.current?.focus();
             }}
           />
         </div>

@@ -1,4 +1,4 @@
-import { ChevronDown, BarChart, Clock, Zap, AlertCircle } from "lucide-react";
+import { ChevronDown, BarChart, Clock, Zap, AlertCircle, Copy, FileJson, FileDown } from "lucide-react";
 import { useState } from "react";
 
 import { LogprobChart } from "./LogprobChart";
@@ -6,6 +6,8 @@ import { LogprobChart } from "./LogprobChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { CompletionLP } from "@/types/logprob";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/sonner";
 // (legend colors are applied within child components/tooltips)
 
 interface AnalysisPanelProps {
@@ -124,6 +126,73 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
                 <Zap className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Model:</span>
                 <span className="font-medium font-mono text-xs">{completion.model}</span>
+              </div>
+            </div>
+
+            {/* Export / Copy actions moved here from header */}
+            <div className="pt-2 border-t">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm font-medium">Export</div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(completion.text);
+                        toast("Copied text", { description: "Completion text copied to clipboard" });
+                      } catch (e) {
+                        toast("Copy failed", { description: (e as Error).message });
+                      }
+                    }}
+                    aria-label="Copy completion text"
+                  >
+                    <Copy className="w-4 h-4 mr-1" /> Copy
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(completion, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `completion-${Date.now()}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    }}
+                    aria-label="Download JSON"
+                  >
+                    <FileJson className="w-4 h-4 mr-1" /> JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const esc = (v: string): string => `"${v.replace(/"/g, '""')}"`;
+                      const header = ["index", "token", "logprob", "prob", "alts"].join(",");
+                      const rows = completion.tokens.map((t) => {
+                        const alts = t.top_logprobs?.map((a) => ({ token: a.token, logprob: a.logprob, prob: a.prob })) ?? [];
+                        return [t.index, esc(t.token), t.logprob, t.prob, esc(JSON.stringify(alts))].join(",");
+                      });
+                      const csv = [header, ...rows].join("\n");
+                      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `completion-${Date.now()}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                    }}
+                    aria-label="Download CSV"
+                  >
+                    <FileDown className="w-4 h-4 mr-1" /> CSV
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>

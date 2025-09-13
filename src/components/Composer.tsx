@@ -1,10 +1,11 @@
-import { Send, Settings } from "lucide-react";
+import { Send, Settings, Trash2 } from "lucide-react";
 import type React from "react";
 import { useState, useRef, forwardRef, useImperativeHandle, useLayoutEffect } from "react";
 
 import { ParametersDrawer } from "./ParametersDrawer";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import type { RunParameters } from "@/types/logprob";
 
@@ -19,6 +20,7 @@ interface ComposerProps {
     showWhitespace?: boolean;
     showPunctuation?: boolean;
   }) => void;
+  onClearHistory?: () => void;
 }
 
 export interface ComposerHandle {
@@ -37,6 +39,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       showWhitespaceOverlays = true,
       showPunctuationOverlays = true,
       onReadabilityChange,
+      onClearHistory,
     }: ComposerProps,
     ref
   ) {
@@ -117,23 +120,53 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               </div>
 
               <div className="flex gap-1">
-                <Button
-                  type="submit"
-                  disabled={!message.trim() || isLoading}
-                  className="h-11 px-4"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="submit"
+                      disabled={!message.trim() || isLoading}
+                      className="h-11 px-4"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Send (Cmd/Ctrl+Enter)</TooltipContent>
+                </Tooltip>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowParameters(!showParameters)}
-                  className="h-11 w-11"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => {
+                        if (!onClearHistory) return;
+                        const ok = window.confirm("Clear conversation history?");
+                        if (ok) onClearHistory();
+                      }}
+                      aria-label="Clear conversation history"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Clear history</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowParameters(!showParameters)}
+                      className="h-11 w-11"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Parameters</TooltipContent>
+                </Tooltip>
               </div>
             </div>
 

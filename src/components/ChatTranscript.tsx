@@ -33,7 +33,7 @@ export const ChatTranscript = ({
   return (
     <div 
       ref={scrollRef}
-      className="flex-1 overflow-y-auto px-6 py-4 space-y-6"
+      className="flex-1 overflow-y-auto px-6 py-4 space-y-6 transcript-scroll"
     >
       {messages.length === 0 && (
         <div className="flex items-center justify-center h-full text-muted-foreground">
