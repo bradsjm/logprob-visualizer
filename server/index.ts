@@ -92,13 +92,11 @@ app.post("/api/complete", async (req, reply) => {
   const start = Date.now();
   const parsed = CompleteRequest.safeParse(req.body);
   if (!parsed.success) {
-    return reply
-      .code(400)
-      .send({
-        error: "Invalid request",
-        issues: parsed.error.issues,
-        request_id: req.id,
-      });
+    return reply.code(400).send({
+      error: "Invalid request",
+      issues: parsed.error.issues,
+      request_id: req.id,
+    });
   }
   const body = parsed.data;
 
@@ -184,13 +182,10 @@ app.post("/api/complete", async (req, reply) => {
     const text = choice.message.content ?? "";
     const logprobItems = choice.logprobs?.content;
     if (!logprobItems || logprobItems.length === 0) {
-      return reply
-        .code(409)
-        .send({
-          error:
-            "Model response lacked token logprobs. Pick a supported model.",
-          request_id: req.id,
-        });
+      return reply.code(409).send({
+        error: "Model response lacked token logprobs. Pick a supported model.",
+        request_id: req.id,
+      });
     }
 
     const tokens = logprobItems.map((lp, i) => ({
@@ -222,13 +217,11 @@ app.post("/api/complete", async (req, reply) => {
     });
   } catch (err: unknown) {
     req.log.error({ err }, "OpenAI error");
-    return reply
-      .code(502)
-      .send({
-        error: "Upstream OpenAI error",
-        details: (err as Error).message,
-        request_id: req.id,
-      });
+    return reply.code(502).send({
+      error: "Upstream OpenAI error",
+      details: (err as Error).message,
+      request_id: req.id,
+    });
   }
 });
 
