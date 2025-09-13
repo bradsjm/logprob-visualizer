@@ -59,19 +59,13 @@ This plan delivers the Logprob Visualizer in small, reviewable phases. Each phas
 - Deliverables: Real completions with token heatmap + chart.
 - Review: Caps enforced (≤256 tokens; ≤10 alternatives); clamp messages surfaced.
 
-## Phase 7 — Click‑to‑Branch
-
-- Backend: `force_prefix` (assistant-prefix default; hint mode toggle).
-- Frontend: Click token/alternative → prefill composer with exact prefix; show branch badge; submit continues from prefix.
-- Review: Branching UX and correctness of prefix.
-
-## Phase 8 — Performance & A11y Hardening
+## Phase 7 — Performance & A11y Hardening
 
 - Frontend: Virtualize tokens >200, memoize quantiles/color scales, batch tooltip measurement with `requestAnimationFrame`.
 - Deliverables: Smooth interactions under long outputs.
 - Review: Keyboard path, screen-reader labels.
 
-## Phase 9 — Streaming‑Ready Refactor (No Behavior Change)
+## Phase 8 — Streaming‑Ready Refactor (No Behavior Change)
 
 - Frontend: Introduce `Transport` interface: `complete(params): Promise<CompletionLP> | Stream<Partial>`; keep current REST as `RestTransport`.
 - Backend: Prepare `/api/complete/stream` route (feature‑flagged, not used yet).

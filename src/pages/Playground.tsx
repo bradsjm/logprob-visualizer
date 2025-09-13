@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { AnalysisPanel } from "@/components/AnalysisPanel";
-import { BranchBadge } from "@/components/BranchBadge";
 import { ChatTranscript } from "@/components/ChatTranscript";
 import { Composer, type ComposerHandle } from "@/components/Composer";
 import { ModelSelector } from "@/components/ModelSelector";
@@ -13,7 +12,6 @@ import { useModels } from "@/hooks/useModels";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
 import type {
   CompletionLP,
-  BranchContext,
   ModelInfo,
   RunParameters,
   TokenLP,
@@ -205,9 +203,7 @@ const Playground = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: seed.text, tokens: seed.tokens as TokenLP[] },
   ]);
-  const [branchContext, setBranchContext] = useState<BranchContext | null>(
-    null
-  );
+  // Branching UI removed; no branch context state
   const [currentCompletion, setCurrentCompletion] =
     useState<CompletionLP | null>(seed);
   const initialParams: RunParameters = useMemo(() => {
@@ -299,17 +295,15 @@ const Playground = () => {
       .map((t) => t.token)
       .join("");
 
-    setBranchContext({
-      tokenIndex,
-      newToken,
-      prefix: prefix + newToken,
-      originalToken: currentCompletion.tokens[tokenIndex]?.token || "",
-    });
+    // UX simplification: prefill composer input instead of branching UI
+    const prefill = prefix + newToken;
+    composerRef.current?.setMessage(prefill);
+    composerRef.current?.focus();
+    // Ensure any previous branch state is cleared so no badges/messages show
+    // branching UI removed; nothing to clear
   };
 
-  const clearBranch = () => {
-    setBranchContext(null);
-  };
+  // clearBranch removed
 
   // Keyboard shortcuts: '/', '.', '[' and ']'
   useEffect(() => {
@@ -400,9 +394,6 @@ const Playground = () => {
         </div>
         <div className="flex items-center gap-3">
           <ParameterBadges parameters={runParameters} />
-          {branchContext && (
-            <BranchBadge branchContext={branchContext} onClear={clearBranch} />
-          )}
         </div>
       </header>
 
@@ -422,7 +413,6 @@ const Playground = () => {
             ref={composerRef}
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
-            branchContext={branchContext}
             parameters={runParameters}
             onParametersChange={setRunParameters}
             showWhitespaceOverlays={showWhitespaceOverlays}

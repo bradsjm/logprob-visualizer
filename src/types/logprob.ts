@@ -26,12 +26,6 @@ export interface CompletionLP {
   force_prefix_echo?: string;
 }
 
-export interface BranchContext {
-  tokenIndex: number;
-  newToken: string;
-  prefix: string;
-  originalToken: string;
-}
 
 export interface ModelInfo {
   id: string;

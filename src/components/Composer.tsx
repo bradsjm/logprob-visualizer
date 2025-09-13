@@ -6,12 +6,11 @@ import { ParametersDrawer } from "./ParametersDrawer";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { BranchContext, RunParameters } from "@/types/logprob";
+import type { RunParameters } from "@/types/logprob";
 
 interface ComposerProps {
   onSendMessage: (content: string) => void;
   isLoading: boolean;
-  branchContext: BranchContext | null;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
   showWhitespaceOverlays?: boolean;
@@ -25,6 +24,7 @@ interface ComposerProps {
 export interface ComposerHandle {
   focus: () => void;
   openParameters: () => void;
+  setMessage: (value: string) => void;
 }
 
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(
@@ -32,7 +32,6 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     {
       onSendMessage,
       isLoading,
-      branchContext,
       parameters,
       onParametersChange,
       showWhitespaceOverlays = true,
@@ -52,6 +51,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
           textareaRef.current?.focus();
         },
         openParameters: () => setShowParameters(true),
+        setMessage: (value: string) => {
+          setMessage(value);
+          const ta = textareaRef.current;
+          if (ta) {
+            ta.style.height = "auto";
+            ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+          }
+        },
       }),
       []
     );
@@ -89,15 +96,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       <div className="border-t bg-background">
         <div className="px-6 py-4">
           <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Branch context info */}
-            {branchContext && (
-              <div className="text-sm text-muted-foreground bg-surface p-3 rounded-lg">
-                Continuing from:{" "}
-                <code className="bg-muted px-1 rounded">
-                  "{branchContext.prefix}"
-                </code>
-              </div>
-            )}
+            {/* Branch context info removed per UX simplification */}
 
             <div className="flex gap-2">
               <div className="flex-1 relative">
@@ -106,11 +105,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   value={message}
                   onChange={handleTextareaChange}
                   onKeyDown={handleKeyDown}
-                  placeholder={
-                    branchContext
-                      ? "Continue the conversation from the branch..."
-                      : "Type your message... (Cmd/Ctrl+Enter to send)"
-                  }
+                  placeholder={"Type your message... (Cmd/Ctrl+Enter to send)"}
                   disabled={isLoading}
                   className="min-h-[44px] max-h-[200px] resize-none pr-12"
                   rows={1}
@@ -139,11 +134,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
             </div>
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div>
-                {branchContext
-                  ? "Branching enabled - new completion will continue from selected token"
-                  : "Cmd/Ctrl+Enter to send"}
-              </div>
+              <div>Cmd/Ctrl+Enter to send</div>
               <div>Max tokens: {parameters.max_tokens}</div>
             </div>
           </form>
