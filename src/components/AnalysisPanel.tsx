@@ -1,10 +1,23 @@
-import { ChevronDown, BarChart, Clock, Zap, AlertCircle, Copy, FileJson, FileDown } from "lucide-react";
+import {
+  ChevronDown,
+  BarChart,
+  Clock,
+  Zap,
+  AlertCircle,
+  Copy,
+  FileJson,
+  FileDown,
+} from "lucide-react";
 import { useState } from "react";
 
 import { LogprobChart } from "./LogprobChart";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { CompletionLP } from "@/types/logprob";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
@@ -16,7 +29,11 @@ interface AnalysisPanelProps {
   onTokenHover?: (tokenIndex: number | null) => void;
 }
 
-export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: AnalysisPanelProps) => {
+export const AnalysisPanel = ({
+  completion,
+  onTokenClick,
+  onTokenHover,
+}: AnalysisPanelProps) => {
   const [showRawJson, setShowRawJson] = useState(false);
 
   if (!completion) {
@@ -64,7 +81,9 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
             </div>
             <div className="pt-2 border-t text-xs text-muted-foreground flex items-start gap-2">
               <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-              <span>Dashed underlines indicate tokens with &lt; 50% probability</span>
+              <span>
+                Dashed underlines indicate tokens with &lt; 50% probability
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -78,7 +97,7 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LogprobChart 
+            <LogprobChart
               tokens={completion.tokens}
               onTokenClick={onTokenClick}
               onTokenHover={onTokenHover}
@@ -95,19 +114,27 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="space-y-1">
                 <div className="text-muted-foreground">Prompt tokens</div>
-                <div className="font-medium">{completion.usage.prompt_tokens}</div>
+                <div className="font-medium">
+                  {completion.usage.prompt_tokens}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Completion tokens</div>
-                <div className="font-medium">{completion.usage.completion_tokens}</div>
+                <div className="font-medium">
+                  {completion.usage.completion_tokens}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Total tokens</div>
-                <div className="font-medium">{completion.usage.total_tokens}</div>
+                <div className="font-medium">
+                  {completion.usage.total_tokens}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Finish reason</div>
-                <div className="font-medium capitalize">{completion.finish_reason}</div>
+                <div className="font-medium capitalize">
+                  {completion.finish_reason}
+                </div>
               </div>
             </div>
 
@@ -116,7 +143,9 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="w-4 h-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Latency:</span>
-                  <span className="font-medium">{formatDuration(completion.latency)}</span>
+                  <span className="font-medium">
+                    {formatDuration(completion.latency)}
+                  </span>
                 </div>
               </div>
             )}
@@ -125,7 +154,9 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
               <div className="flex items-center gap-2 text-sm">
                 <Zap className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Model:</span>
-                <span className="font-medium font-mono text-xs">{completion.model}</span>
+                <span className="font-medium font-mono text-xs">
+                  {completion.model}
+                </span>
               </div>
             </div>
 
@@ -140,9 +171,13 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(completion.text);
-                        toast("Copied text", { description: "Completion text copied to clipboard" });
+                        toast("Copied text", {
+                          description: "Completion text copied to clipboard",
+                        });
                       } catch (e) {
-                        toast("Copy failed", { description: (e as Error).message });
+                        toast("Copy failed", {
+                          description: (e as Error).message,
+                        });
                       }
                     }}
                     aria-label="Copy completion text"
@@ -153,7 +188,10 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const blob = new Blob([JSON.stringify(completion, null, 2)], { type: "application/json" });
+                      const blob = new Blob(
+                        [JSON.stringify(completion, null, 2)],
+                        { type: "application/json" },
+                      );
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
@@ -171,14 +209,34 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const esc = (v: string): string => `"${v.replace(/"/g, '""')}"`;
-                      const header = ["index", "token", "logprob", "prob", "alts"].join(",");
+                      const esc = (v: string): string =>
+                        `"${v.replace(/"/g, '""')}"`;
+                      const header = [
+                        "index",
+                        "token",
+                        "logprob",
+                        "prob",
+                        "alts",
+                      ].join(",");
                       const rows = completion.tokens.map((t) => {
-                        const alts = t.top_logprobs?.map((a) => ({ token: a.token, logprob: a.logprob, prob: a.prob })) ?? [];
-                        return [t.index, esc(t.token), t.logprob, t.prob, esc(JSON.stringify(alts))].join(",");
+                        const alts =
+                          t.top_logprobs?.map((a) => ({
+                            token: a.token,
+                            logprob: a.logprob,
+                            prob: a.prob,
+                          })) ?? [];
+                        return [
+                          t.index,
+                          esc(t.token),
+                          t.logprob,
+                          t.prob,
+                          esc(JSON.stringify(alts)),
+                        ].join(",");
                       });
                       const csv = [header, ...rows].join("\n");
-                      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+                      const blob = new Blob([csv], {
+                        type: "text/csv;charset=utf-8",
+                      });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
@@ -205,7 +263,9 @@ export const AnalysisPanel = ({ completion, onTokenClick, onTokenHover }: Analys
               <CardHeader className="pb-3 cursor-pointer hover:bg-surface/50 transition-colors">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
                   <span>Raw Response</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showRawJson ? "rotate-180" : ""}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${showRawJson ? "rotate-180" : ""}`}
+                  />
                 </CardTitle>
               </CardHeader>
             </CollapsibleTrigger>

@@ -18,21 +18,31 @@ export default tseslint.config(
     plugins: {
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
-      "react": react,
+      react: react,
       import: importPlugin,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": [
+        "warn",
+        { allowConstantExport: true },
+      ],
       "@typescript-eslint/no-unused-vars": [
         "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true },
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
       ],
       "import/order": [
         "warn",
         {
           "newlines-between": "always",
-          groups: [["builtin", "external", "internal"], ["parent", "sibling", "index"]],
+          groups: [
+            ["builtin", "external", "internal"],
+            ["parent", "sibling", "index"],
+          ],
           alphabetize: { order: "asc" },
         },
       ],

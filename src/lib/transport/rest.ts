@@ -18,7 +18,9 @@ export interface CompleteParams {
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}: ${res.statusText}${detail ? ` - ${detail}` : ""}`);
+    throw new Error(
+      `HTTP ${res.status}: ${res.statusText}${detail ? ` - ${detail}` : ""}`,
+    );
   }
   return (await res.json()) as T;
 }

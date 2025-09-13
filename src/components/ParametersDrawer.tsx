@@ -1,7 +1,13 @@
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -15,16 +21,32 @@ interface ParametersDrawerProps {
   onParametersChange: (params: RunParameters) => void;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
-  onReadabilityChange?: (patch: { showWhitespace?: boolean; showPunctuation?: boolean }) => void;
+  onReadabilityChange?: (patch: {
+    showWhitespace?: boolean;
+    showPunctuation?: boolean;
+  }) => void;
 }
 
-export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClose, showWhitespaceOverlays = true, showPunctuationOverlays = true, onReadabilityChange }: ParametersDrawerProps) => {
+export const ParametersDrawer = ({
+  isOpen,
+  parameters,
+  onParametersChange,
+  onClose,
+  showWhitespaceOverlays = true,
+  showPunctuationOverlays = true,
+  onReadabilityChange,
+}: ParametersDrawerProps) => {
   const updateParameter = (key: keyof RunParameters, value: number) => {
     onParametersChange({ ...parameters, [key]: value });
   };
 
   return (
-    <Drawer open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DrawerContent className="bg-background">
         <DrawerHeader className="relative">
           <DrawerTitle>Generation Parameters</DrawerTitle>
@@ -44,18 +66,23 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Temperature */}
             <div className="space-y-2">
-              <Label htmlFor="temperature">Temperature: {parameters.temperature}</Label>
+              <Label htmlFor="temperature">
+                Temperature: {parameters.temperature}
+              </Label>
               <Slider
                 id="temperature"
                 min={0}
                 max={2}
                 step={0.1}
                 value={[parameters.temperature]}
-                onValueChange={([value]) => updateParameter("temperature", value)}
+                onValueChange={([value]) =>
+                  updateParameter("temperature", value)
+                }
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Controls randomness. Higher = more creative, lower = more focused.
+                Controls randomness. Higher = more creative, lower = more
+                focused.
               </p>
             </div>
 
@@ -85,7 +112,12 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
                 min={1}
                 max={256}
                 value={parameters.max_tokens}
-                onChange={(e) => updateParameter("max_tokens", Math.min(256, Math.max(1, parseInt(e.target.value) || 1)))}
+                onChange={(e) =>
+                  updateParameter(
+                    "max_tokens",
+                    Math.min(256, Math.max(1, parseInt(e.target.value) || 1)),
+                  )
+                }
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
@@ -95,14 +127,18 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
 
             {/* Top logprobs */}
             <div className="space-y-2">
-              <Label htmlFor="top-logprobs">Top alternatives: {parameters.top_logprobs}</Label>
+              <Label htmlFor="top-logprobs">
+                Top alternatives: {parameters.top_logprobs}
+              </Label>
               <Slider
                 id="top-logprobs"
                 min={1}
                 max={10}
                 step={1}
                 value={[parameters.top_logprobs]}
-                onValueChange={([value]) => updateParameter("top_logprobs", value)}
+                onValueChange={([value]) =>
+                  updateParameter("top_logprobs", value)
+                }
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
@@ -114,14 +150,18 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
 
             {/* Presence penalty */}
             <div className="space-y-2">
-              <Label htmlFor="presence-penalty">Presence penalty: {parameters.presence_penalty}</Label>
+              <Label htmlFor="presence-penalty">
+                Presence penalty: {parameters.presence_penalty}
+              </Label>
               <Slider
                 id="presence-penalty"
                 min={-2}
                 max={2}
                 step={0.1}
                 value={[parameters.presence_penalty]}
-                onValueChange={([value]) => updateParameter("presence_penalty", value)}
+                onValueChange={([value]) =>
+                  updateParameter("presence_penalty", value)
+                }
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
@@ -131,14 +171,18 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
 
             {/* Frequency penalty */}
             <div className="space-y-2">
-              <Label htmlFor="frequency-penalty">Frequency penalty: {parameters.frequency_penalty}</Label>
+              <Label htmlFor="frequency-penalty">
+                Frequency penalty: {parameters.frequency_penalty}
+              </Label>
               <Slider
                 id="frequency-penalty"
                 min={-2}
                 max={2}
                 step={0.1}
                 value={[parameters.frequency_penalty]}
-                onValueChange={([value]) => updateParameter("frequency_penalty", value)}
+                onValueChange={([value]) =>
+                  updateParameter("frequency_penalty", value)
+                }
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
@@ -152,17 +196,38 @@ export const ParametersDrawer = ({ isOpen, parameters, onParametersChange, onClo
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="toggle-whitespace">Show whitespace overlays</Label>
-                  <p className="text-xs text-muted-foreground">Display overlays for spaces and newlines to make gaps visible.</p>
+                  <Label htmlFor="toggle-whitespace">
+                    Show whitespace overlays
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Display overlays for spaces and newlines to make gaps
+                    visible.
+                  </p>
                 </div>
-                <Switch id="toggle-whitespace" checked={showWhitespaceOverlays} onCheckedChange={(v) => onReadabilityChange?.({ showWhitespace: v })} />
+                <Switch
+                  id="toggle-whitespace"
+                  checked={showWhitespaceOverlays}
+                  onCheckedChange={(v) =>
+                    onReadabilityChange?.({ showWhitespace: v })
+                  }
+                />
               </div>
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="toggle-punct">Show punctuation overlays</Label>
-                  <p className="text-xs text-muted-foreground">Display overlays for punctuation tokens (., !, ?, etc.).</p>
+                  <Label htmlFor="toggle-punct">
+                    Show punctuation overlays
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Display overlays for punctuation tokens (., !, ?, etc.).
+                  </p>
                 </div>
-                <Switch id="toggle-punct" checked={showPunctuationOverlays} onCheckedChange={(v) => onReadabilityChange?.({ showPunctuation: v })} />
+                <Switch
+                  id="toggle-punct"
+                  checked={showPunctuationOverlays}
+                  onCheckedChange={(v) =>
+                    onReadabilityChange?.({ showPunctuation: v })
+                  }
+                />
               </div>
             </div>
           </div>

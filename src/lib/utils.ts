@@ -38,7 +38,12 @@ export function findNextLowConfidenceIndex(
   threshold: number = 0.5,
 ): number | null {
   if (!tokens.length) return null;
-  const begin = typeof startIndex === "number" ? startIndex + direction : direction > 0 ? 0 : tokens.length - 1;
+  const begin =
+    typeof startIndex === "number"
+      ? startIndex + direction
+      : direction > 0
+        ? 0
+        : tokens.length - 1;
   for (let i = begin; i >= 0 && i < tokens.length; i += direction) {
     if (tokens[i]?.prob < threshold) return i;
   }
@@ -49,7 +54,10 @@ export function findNextLowConfidenceIndex(
  * Compute quantile clamp bounds for a token list to map logprobs to colors.
  * Falls back to [-10, 0] and clamps overall to [-20, 0].
  */
-export function calculateQuantiles(tokens: readonly TokenLP[]): { min: number; max: number } {
+export function calculateQuantiles(tokens: readonly TokenLP[]): {
+  min: number;
+  max: number;
+} {
   const logprobs = [...tokens].map((t) => t.logprob).sort((a, b) => a - b);
   const q = (p: number): number => {
     if (logprobs.length === 0) return -10;
@@ -64,7 +72,11 @@ export function calculateQuantiles(tokens: readonly TokenLP[]): { min: number; m
 }
 
 /** Map a logprob to one of the token color classes using [min,max] bounds. */
-export function getTokenColorClass(logprob: number, min: number, max: number):
+export function getTokenColorClass(
+  logprob: number,
+  min: number,
+  max: number,
+):
   | "token-low-prob"
   | "token-med-low-prob"
   | "token-med-high-prob"

@@ -179,7 +179,8 @@ const buildMockCompletion = (modelId: string): CompletionLP => ({
   latency: 1240,
 });
 
-const clamp = (v: number, min: number, max: number): number => Math.max(min, Math.min(max, v));
+const clamp = (v: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, v));
 
 const DEFAULT_PARAMS: Readonly<RunParameters> = Object.freeze({
   temperature: 0.7,
@@ -208,7 +209,12 @@ const Playground = () => {
   const [currentCompletion, setCurrentCompletion] =
     useState<CompletionLP | null>(seed);
   const initialParams: RunParameters = useMemo(() => {
-    const n = (key: keyof RunParameters, def: number, min: number, max: number): number => {
+    const n = (
+      key: keyof RunParameters,
+      def: number,
+      min: number,
+      max: number,
+    ): number => {
       const raw = searchParams.get(key as string);
       if (raw == null) return def;
       const parsed = Number(raw);
@@ -217,14 +223,29 @@ const Playground = () => {
     return {
       temperature: n("temperature", DEFAULT_PARAMS.temperature, 0, 2),
       top_p: n("top_p", DEFAULT_PARAMS.top_p, 0, 1),
-      max_tokens: Math.round(n("max_tokens", DEFAULT_PARAMS.max_tokens, 1, 256)),
-      top_logprobs: Math.round(n("top_logprobs", DEFAULT_PARAMS.top_logprobs, 1, 10)),
-      presence_penalty: n("presence_penalty", DEFAULT_PARAMS.presence_penalty, -2, 2),
-      frequency_penalty: n("frequency_penalty", DEFAULT_PARAMS.frequency_penalty, -2, 2),
+      max_tokens: Math.round(
+        n("max_tokens", DEFAULT_PARAMS.max_tokens, 1, 256),
+      ),
+      top_logprobs: Math.round(
+        n("top_logprobs", DEFAULT_PARAMS.top_logprobs, 1, 10),
+      ),
+      presence_penalty: n(
+        "presence_penalty",
+        DEFAULT_PARAMS.presence_penalty,
+        -2,
+        2,
+      ),
+      frequency_penalty: n(
+        "frequency_penalty",
+        DEFAULT_PARAMS.frequency_penalty,
+        -2,
+        2,
+      ),
     } satisfies RunParameters;
   }, [searchParams]);
 
-  const [runParameters, setRunParameters] = useState<RunParameters>(initialParams);
+  const [runParameters, setRunParameters] =
+    useState<RunParameters>(initialParams);
   const [isLoading, setIsLoading] = useState(false);
   const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(true);
   const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(true);
@@ -269,7 +290,10 @@ const Playground = () => {
 
     try {
       const response = await complete({
-        messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+        messages: newMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
         model: selectedModel.id,
         temperature: runParameters.temperature,
         top_p: runParameters.top_p,
@@ -345,7 +369,7 @@ const Playground = () => {
           currentCompletion.tokens,
           lastLowIndex,
           direction,
-          0.5
+          0.5,
         );
         if (next !== null) {
           setLastLowIndex(next);
@@ -396,7 +420,10 @@ const Playground = () => {
             }}
             temperature={runParameters.temperature}
             onTemperatureChange={(value) =>
-              setRunParameters((prev) => ({ ...prev, temperature: clamp(value, 0, 2) }))
+              setRunParameters((prev) => ({
+                ...prev,
+                temperature: clamp(value, 0, 2),
+              }))
             }
           />
           <PresetChips
@@ -431,8 +458,10 @@ const Playground = () => {
             showWhitespaceOverlays={showWhitespaceOverlays}
             showPunctuationOverlays={showPunctuationOverlays}
             onReadabilityChange={(patch) => {
-              if (typeof patch.showWhitespace === "boolean") setShowWhitespaceOverlays(patch.showWhitespace);
-              if (typeof patch.showPunctuation === "boolean") setShowPunctuationOverlays(patch.showPunctuation);
+              if (typeof patch.showWhitespace === "boolean")
+                setShowWhitespaceOverlays(patch.showWhitespace);
+              if (typeof patch.showPunctuation === "boolean")
+                setShowPunctuationOverlays(patch.showPunctuation);
             }}
             onClearHistory={() => {
               setMessages([]);
@@ -449,7 +478,7 @@ const Playground = () => {
           onTokenClick={(tokenIndex) => {
             // Scroll to token and highlight
             const tokenElement = document.querySelector(
-              `[data-token-index="${tokenIndex}"]`
+              `[data-token-index="${tokenIndex}"]`,
             );
             tokenElement?.scrollIntoView({
               behavior: "smooth",

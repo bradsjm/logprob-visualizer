@@ -27,7 +27,7 @@ export const TokenTooltip = ({
 }: TokenTooltipProps) => {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(
-    null
+    null,
   );
   const [visible, setVisible] = useState(false);
 
@@ -194,7 +194,7 @@ export const TokenTooltip = ({
                 const altClass =
                   min !== undefined && max !== undefined
                     ? tokenColorToTextClass(
-                        getTokenColorClass(alt.logprob, min, max)
+                        getTokenColorClass(alt.logprob, min, max),
                       )
                     : "";
                 return (

@@ -26,7 +26,6 @@ export interface CompletionLP {
   force_prefix_echo?: string;
 }
 
-
 export interface ModelInfo {
   id: string;
   name: string;

@@ -70,7 +70,7 @@ export const LogprobChart = ({
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const tClass = tokenColorToTextClass(
-        getTokenColorClass(data.logprob, min, max)
+        getTokenColorClass(data.logprob, min, max),
       );
       return (
         <div className="bg-popover border rounded-lg p-3 shadow-lg">

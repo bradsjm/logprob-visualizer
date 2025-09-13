@@ -1,11 +1,21 @@
 import { Send, Settings, Trash2 } from "lucide-react";
 import type React from "react";
-import { useState, useRef, forwardRef, useImperativeHandle, useLayoutEffect } from "react";
+import {
+  useState,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+  useLayoutEffect,
+} from "react";
 
 import { ParametersDrawer } from "./ParametersDrawer";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import type { RunParameters } from "@/types/logprob";
 
@@ -41,7 +51,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       onReadabilityChange,
       onClearHistory,
     }: ComposerProps,
-    ref
+    ref,
   ) {
     const [message, setMessage] = useState("");
     const [showParameters, setShowParameters] = useState(false);
@@ -60,7 +70,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
           setMessage(value);
         },
       }),
-      []
+      [],
     );
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -82,7 +92,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     };
 
     const handleTextareaChange = (
-      e: React.ChangeEvent<HTMLTextAreaElement>
+      e: React.ChangeEvent<HTMLTextAreaElement>,
     ) => {
       setMessage(e.target.value);
 
@@ -114,7 +124,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                   onKeyDown={handleKeyDown}
                   placeholder={"Type your message... (Cmd/Ctrl+Enter to send)"}
                   disabled={isLoading}
-                  className={`composer-textarea min-h-[44px] max-h-[200px] pr-12 ${atMaxHeight ? 'overflow-y-auto' : 'overflow-hidden'}`}
+                  className={`composer-textarea min-h-[44px] max-h-[200px] pr-12 ${atMaxHeight ? "overflow-y-auto" : "overflow-hidden"}`}
                   rows={1}
                 />
               </div>
@@ -142,7 +152,9 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                       className="h-11 w-11"
                       onClick={() => {
                         if (!onClearHistory) return;
-                        const ok = window.confirm("Clear conversation history?");
+                        const ok = window.confirm(
+                          "Clear conversation history?",
+                        );
                         if (ok) onClearHistory();
                       }}
                       aria-label="Clear conversation history"
@@ -188,5 +200,5 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
         />
       </div>
     );
-  }
+  },
 );

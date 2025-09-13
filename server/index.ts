@@ -1,13 +1,14 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
-import OpenAI from "openai";
-import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import OpenAI from "openai";
+import { z } from "zod";
 
 const PORT = Number(process.env.PORT ?? 8787);
+const HOST = process.env.HOST ?? "0.0.0.0";
 
 // Env validation
 const EnvSchema = z.object({
@@ -17,12 +18,8 @@ const EnvSchema = z.object({
 });
 const env = EnvSchema.parse(process.env);
 
-const resolveBoolean = (v: string | undefined): boolean =>
-  typeof v === "string" && ["1", "true", "yes", "on"].includes(v.toLowerCase());
-
 const effectiveApiKey = env.OPENAI_API_KEY;
 const effectiveBaseUrl = env.OPENAI_BASE_URL;
-const MOCK_MODE = resolveBoolean(env.MOCK_MODE);
 
 const app = Fastify({
   logger: true,
@@ -41,7 +38,7 @@ const CompleteRequest = z.object({
       z.object({
         role: z.enum(["user", "assistant"]),
         content: z.string(),
-      })
+      }),
     )
     .min(1),
   model: z.string(),
@@ -118,45 +115,6 @@ app.post("/api/complete", async (req, reply) => {
     force_prefix_echo = body.force_prefix;
   }
 
-  // Support mock mode
-  if (MOCK_MODE) {
-    const mockText = "Hello from mock mode.";
-    const mockTokens = [
-      { token: "Hello", logprob: Math.log(0.9) },
-      { token: " ", logprob: Math.log(0.99) },
-      { token: "from", logprob: Math.log(0.8) },
-      { token: " ", logprob: Math.log(0.99) },
-      { token: "mock", logprob: Math.log(0.85) },
-      { token: " ", logprob: Math.log(0.99) },
-      { token: "mode", logprob: Math.log(0.88) },
-      { token: ".", logprob: Math.log(0.95) },
-    ].map((t, i) => ({
-      index: i,
-      token: t.token,
-      logprob: t.logprob,
-      prob: Math.exp(t.logprob),
-      top_logprobs: [
-        { token: t.token, logprob: t.logprob, prob: Math.exp(t.logprob) },
-        { token: t.token.toUpperCase(), logprob: Math.log(0.05), prob: 0.05 },
-      ],
-    }));
-    const latency = Date.now() - start;
-    return reply.send({
-      text: mockText,
-      tokens: mockTokens,
-      finish_reason: "stop",
-      usage: {
-        prompt_tokens: 5,
-        completion_tokens: mockTokens.length,
-        total_tokens: 5 + mockTokens.length,
-      },
-      model: body.model,
-      latency,
-      force_prefix_echo: undefined,
-      request_id: req.id,
-    });
-  }
-
   if (!effectiveApiKey) {
     return reply
       .code(500)
@@ -179,7 +137,6 @@ app.post("/api/complete", async (req, reply) => {
       max_tokens: clampedMaxTokens,
       logprobs: true,
       top_logprobs: clampedTopLogprobs,
-      // top_k intentionally not sent
     });
 
     const choice = completion.choices[0];
@@ -229,6 +186,6 @@ app.post("/api/complete", async (req, reply) => {
   }
 });
 
-app.listen({ host: "0.0.0.0", port: PORT }).then(() => {
-  app.log.info(`API listening on http://localhost:${PORT}`);
+app.listen({ host: HOST, port: PORT }).then(() => {
+  app.log.info(`API listening on http://${HOST}:${PORT}`);
 });

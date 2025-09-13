@@ -20,7 +20,8 @@ export const ParameterBadges = ({ parameters }: ParameterBadgesProps) => {
       <Badge variant="secondary" className="text-xs">
         top-{parameters.top_logprobs}
       </Badge>
-      {(parameters.presence_penalty !== 0 || parameters.frequency_penalty !== 0) && (
+      {(parameters.presence_penalty !== 0 ||
+        parameters.frequency_penalty !== 0) && (
         <Badge variant="outline" className="text-xs">
           penalties
         </Badge>
