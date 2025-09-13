@@ -3,11 +3,30 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import OpenAI from "openai";
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
 const PORT = Number(process.env.PORT ?? 8787);
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-const app = Fastify({ logger: true });
+// Env validation
+const EnvSchema = z.object({
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  MOCK_MODE: z.string().optional(),
+});
+const env = EnvSchema.parse(process.env);
+
+const resolveBoolean = (v: string | undefined): boolean =>
+  typeof v === "string" && ["1", "true", "yes", "on"].includes(v.toLowerCase());
+
+const effectiveApiKey = env.OPENAI_API_KEY;
+const MOCK_MODE = resolveBoolean(env.MOCK_MODE);
+
+const app = Fastify({
+  logger: true,
+  genReqId: (req) =>
+    (req.headers["x-request-id"] as string | undefined) ?? randomUUID(),
+});
 
 await app.register(cors, { origin: true, credentials: false });
 await app.register(rateLimit, { max: 60, timeWindow: "1 minute" });
@@ -35,6 +54,26 @@ const CompleteRequest = z.object({
   continuation_mode: z.enum(["assistant-prefix", "hint"]).optional(),
 });
 
+// Attach x-request-id header on every response
+app.addHook("preHandler", async (req, reply) => {
+  reply.header("x-request-id", req.id);
+});
+
+// Health endpoint
+app.get("/api/health", async (req, reply) => {
+  // Read version from package.json without relying on TS resolveJsonModule
+  let version = "unknown";
+  try {
+    const pkgPath = path.resolve(process.cwd(), "package.json");
+    const raw = fs.readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(raw) as { version?: string };
+    version = pkg.version ?? version;
+  } catch {
+    // noop
+  }
+  return reply.send({ status: "ok", uptime: process.uptime(), version, request_id: req.id });
+});
+
 app.get("/api/models", async (_req, reply) => {
   // Hard-coded allowed models; adjust as needed or read from env.
   const models = [
@@ -48,7 +87,9 @@ app.post("/api/complete", async (req, reply) => {
   const start = Date.now();
   const parsed = CompleteRequest.safeParse(req.body);
   if (!parsed.success) {
-    return reply.code(400).send({ error: "Invalid request", issues: parsed.error.issues });
+    return reply
+      .code(400)
+      .send({ error: "Invalid request", issues: parsed.error.issues, request_id: req.id });
   }
   const body = parsed.data;
 
@@ -66,11 +107,46 @@ app.post("/api/complete", async (req, reply) => {
     force_prefix_echo = body.force_prefix;
   }
 
-  if (!OPENAI_API_KEY) {
-    return reply.code(500).send({ error: "Missing OPENAI_API_KEY on server" });
+  // Support mock mode
+  if (MOCK_MODE) {
+    const mockText = "Hello from mock mode.";
+    const mockTokens = [
+      { token: "Hello", logprob: Math.log(0.9) },
+      { token: " ", logprob: Math.log(0.99) },
+      { token: "from", logprob: Math.log(0.8) },
+      { token: " ", logprob: Math.log(0.99) },
+      { token: "mock", logprob: Math.log(0.85) },
+      { token: " ", logprob: Math.log(0.99) },
+      { token: "mode", logprob: Math.log(0.88) },
+      { token: ".", logprob: Math.log(0.95) },
+    ].map((t, i) => ({
+      index: i,
+      token: t.token,
+      logprob: t.logprob,
+      prob: Math.exp(t.logprob),
+      top_logprobs: [
+        { token: t.token, logprob: t.logprob, prob: Math.exp(t.logprob) },
+        { token: t.token.toUpperCase(), logprob: Math.log(0.05), prob: 0.05 },
+      ],
+    }));
+    const latency = Date.now() - start;
+    return reply.send({
+      text: mockText,
+      tokens: mockTokens,
+      finish_reason: "stop",
+      usage: { prompt_tokens: 5, completion_tokens: mockTokens.length, total_tokens: 5 + mockTokens.length },
+      model: body.model,
+      latency,
+      force_prefix_echo: undefined,
+      request_id: req.id,
+    });
   }
 
-  const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+  if (!effectiveApiKey) {
+    return reply.code(500).send({ error: "Missing OPENAI_API_KEY on server", request_id: req.id });
+  }
+
+  const client = new OpenAI({ apiKey: effectiveApiKey });
 
   try {
     const completion = await client.chat.completions.create({
@@ -90,7 +166,9 @@ app.post("/api/complete", async (req, reply) => {
     const text = choice.message.content ?? "";
     const logprobItems = choice.logprobs?.content;
     if (!logprobItems || logprobItems.length === 0) {
-      return reply.code(409).send({ error: "Model response lacked token logprobs. Pick a supported model." });
+      return reply
+        .code(409)
+        .send({ error: "Model response lacked token logprobs. Pick a supported model.", request_id: req.id });
     }
 
     const tokens = logprobItems.map((lp, i) => ({
@@ -114,10 +192,13 @@ app.post("/api/complete", async (req, reply) => {
       model: completion.model,
       latency,
       force_prefix_echo,
+      request_id: req.id,
     });
   } catch (err: unknown) {
     req.log.error({ err }, "OpenAI error");
-    return reply.code(502).send({ error: "Upstream OpenAI error", details: (err as Error).message });
+    return reply
+      .code(502)
+      .send({ error: "Upstream OpenAI error", details: (err as Error).message, request_id: req.id });
   }
 });
 
