@@ -9,7 +9,8 @@ import { ParameterBadges } from "@/components/ParameterBadges";
 import { PresetChips } from "@/components/PresetChips";
 import { toast } from "@/components/ui/sonner";
 import { useModels } from "@/hooks/useModels";
-import { complete } from "@/lib/transport/rest";
+import { transport } from "@/lib/transport";
+import type { Stream, StreamEvent } from "@/types/transport";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
 import type {
   CompletionLP,
@@ -247,6 +248,10 @@ const Playground = () => {
   const [runParameters, setRunParameters] =
     useState<RunParameters>(initialParams);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeStream, setActiveStream] = useState<Stream<StreamEvent> | null>(
+    null,
+  );
+  const cancelRequestedRef = useRef(false);
   const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(true);
   const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(true);
   const [liveMessage, setLiveMessage] = useState("");
@@ -289,11 +294,8 @@ const Playground = () => {
     setLiveMessage("Sending request...");
 
     try {
-      const response = await complete({
-        messages: newMessages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+      const result = transport.complete({
+        messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
         model: selectedModel.id,
         temperature: runParameters.temperature,
         top_p: runParameters.top_p,
@@ -303,15 +305,69 @@ const Playground = () => {
         top_logprobs: runParameters.top_logprobs,
       });
 
-      const assistantMessage = {
-        role: "assistant" as const,
-        content: response.text,
-        tokens: response.tokens,
-      };
-
-      setMessages([...newMessages, assistantMessage]);
-      setCurrentCompletion(response);
-      setLiveMessage("Response ready");
+      if (typeof (result as Promise<unknown>).then === "function") {
+        // REST mode
+        const response = (await result) as CompletionLP;
+        const assistantMessage = {
+          role: "assistant" as const,
+          content: response.text,
+          tokens: response.tokens,
+        };
+        setMessages([...newMessages, assistantMessage]);
+        setCurrentCompletion(response);
+        setLiveMessage("Response ready");
+      } else {
+        // Streaming mode
+        let streamText = "";
+        const assistantMessage = { role: "assistant" as const, content: streamText };
+        setMessages((prev) => [...prev, assistantMessage]);
+        const stream = result as Stream<StreamEvent>;
+        setActiveStream(stream);
+        try {
+          for await (const evt of stream) {
+            if (evt.type === "delta") {
+              streamText += evt.delta;
+              setMessages((prev) => {
+                const next = [...prev];
+                next[next.length - 1] = { role: "assistant" as const, content: streamText };
+                return next;
+              });
+              setLiveMessage("Streaming response…");
+            } else if (evt.type === "done") {
+              if (evt.error) {
+                toast("Streaming error", { description: evt.error });
+              }
+              const finalText = evt.completion?.text ?? streamText;
+              setMessages((prev) => {
+                const next = [...prev];
+                next[next.length - 1] = {
+                  role: "assistant" as const,
+                  content: finalText,
+                  tokens: evt.completion?.tokens,
+                };
+                return next;
+              });
+              if (evt.completion) {
+                setCurrentCompletion(evt.completion);
+                setLiveMessage("Response ready");
+              } else {
+                setLiveMessage("Response complete (no chart data)");
+              }
+            }
+          }
+        } catch (err) {
+          const name = (err as { name?: string } | null)?.name;
+          if (name === "AbortError" || cancelRequestedRef.current) {
+            setLiveMessage("Streaming canceled");
+            // leave partial message as-is; no chart update
+          } else {
+            throw err;
+          }
+        } finally {
+          setActiveStream(null);
+          cancelRequestedRef.current = false;
+        }
+      }
     } catch (error) {
       const message = (error as Error).message;
       console.error("Error generating response:", message);
@@ -453,6 +509,13 @@ const Playground = () => {
             ref={composerRef}
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
+            isStreaming={activeStream !== null}
+            onCancel={() => {
+              if (activeStream) {
+                cancelRequestedRef.current = true;
+                activeStream.abort();
+              }
+            }}
             parameters={runParameters}
             onParametersChange={setRunParameters}
             showWhitespaceOverlays={showWhitespaceOverlays}

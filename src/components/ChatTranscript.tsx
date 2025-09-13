@@ -62,6 +62,11 @@ export const ChatTranscript = ({
     }
   }, [messages, isLoading]);
 
+  const hasStreamingAssistant =
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === "assistant" &&
+    !messages[messages.length - 1]?.tokens;
+
   return (
     <div
       ref={scrollRef}
@@ -108,7 +113,7 @@ export const ChatTranscript = ({
         </div>
       ))}
 
-      {isLoading && (
+      {isLoading && !hasStreamingAssistant && (
         <div className="chat-bubble-assistant">
           <p className="text-sm font-medium text-card-foreground mb-2">
             Assistant

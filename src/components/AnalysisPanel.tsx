@@ -8,7 +8,7 @@ import {
   FileJson,
   FileDown,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { LogprobChart } from "./LogprobChart";
 
@@ -51,6 +51,16 @@ export const AnalysisPanel = ({
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
   };
+
+  const finishReasonClass = useMemo(() => {
+    const r = (completion.finish_reason || "").toLowerCase();
+    if (r === "stop" || r === "end_turn" || r === "completed")
+      return "text-[hsl(var(--success))]";
+    if (r === "length" || r === "max_tokens") return "text-destructive";
+    if (r === "content_filter") return "text-[hsl(var(--warning))]";
+    if (r === "tool_calls") return "text-[hsl(var(--info))]";
+    return "text-foreground";
+  }, [completion.finish_reason]);
 
   return (
     <div className="analysis-panel">
@@ -132,7 +142,7 @@ export const AnalysisPanel = ({
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Finish reason</div>
-                <div className="font-medium capitalize">
+                <div className={`font-medium capitalize ${finishReasonClass}`}>
                   {completion.finish_reason}
                 </div>
               </div>

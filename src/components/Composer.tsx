@@ -1,4 +1,4 @@
-import { Send, Settings, Trash2 } from "lucide-react";
+import { Send, Settings, Trash2, XCircle } from "lucide-react";
 import type React from "react";
 import {
   useState,
@@ -22,6 +22,8 @@ import type { RunParameters } from "@/types/logprob";
 interface ComposerProps {
   onSendMessage: (content: string) => void;
   isLoading: boolean;
+  isStreaming?: boolean;
+  onCancel?: () => void;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
   showWhitespaceOverlays?: boolean;
@@ -44,6 +46,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     {
       onSendMessage,
       isLoading,
+      isStreaming = false,
+      onCancel,
       parameters,
       onParametersChange,
       showWhitespaceOverlays = true,
@@ -132,15 +136,29 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               <div className="flex gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      type="submit"
-                      disabled={!message.trim() || isLoading}
-                      className="h-11 px-4"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    {isStreaming ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => onCancel?.()}
+                        className="h-11 px-4"
+                        aria-label="Cancel streaming"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={!message.trim() || isLoading}
+                        className="h-11 px-4"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TooltipTrigger>
-                  <TooltipContent>Send (Cmd/Ctrl+Enter)</TooltipContent>
+                  <TooltipContent>
+                    {isStreaming ? "Cancel" : "Send (Cmd/Ctrl+Enter)"}
+                  </TooltipContent>
                 </Tooltip>
 
                 <Tooltip>

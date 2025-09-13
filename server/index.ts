@@ -186,6 +186,158 @@ app.post("/api/complete", async (req, reply) => {
   }
 });
 
+// NDJSON streaming completion route
+app.post("/api/complete/stream", async (req, reply) => {
+  const start = Date.now();
+  const parsed = CompleteRequest.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.code(400).send({
+      error: "Invalid request",
+      issues: parsed.error.issues,
+      request_id: req.id,
+    });
+  }
+  const body = parsed.data;
+
+  // Prepare NDJSON response
+  reply.raw.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+  reply.raw.setHeader("Cache-Control", "no-cache");
+  reply.raw.setHeader("x-request-id", req.id);
+
+  const write = (obj: unknown) => {
+    try {
+      reply.raw.write(JSON.stringify(obj) + "\n");
+    } catch (err) {
+      req.log.error({ err }, "Write failed");
+    }
+  };
+
+  const end = () => {
+    try {
+      reply.raw.end();
+    } catch {
+      // noop
+    }
+  };
+
+  // Mock mode: emit a short fake stream if OPENAI key is absent and MOCK_MODE is set
+  if (!effectiveApiKey) {
+    write({ type: "delta", delta: "[mock] Generating" });
+    setTimeout(() => write({ type: "delta", delta: "… tokens " }), 50);
+    setTimeout(() => write({ type: "delta", delta: "with NDJSON." }), 100);
+    setTimeout(() => {
+      const completion = {
+        text: "[mock] Generating… tokens with NDJSON.",
+        tokens: [],
+        finish_reason: "stop",
+        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        model: body.model,
+        latency: Date.now() - start,
+        force_prefix_echo: undefined,
+      } as const;
+      write({ type: "done", completion });
+      end();
+    }, 180);
+    return;
+  }
+
+  const client = new OpenAI({
+    apiKey: effectiveApiKey,
+    baseURL: effectiveBaseUrl,
+  });
+
+  // Handle force_prefix behavior for the streaming generation
+  const messages = [...body.messages];
+  let force_prefix_echo: string | undefined;
+  if (
+    body.force_prefix &&
+    (body.continuation_mode ?? "assistant-prefix") === "assistant-prefix"
+  ) {
+    messages.push({ role: "assistant", content: body.force_prefix });
+    force_prefix_echo = body.force_prefix;
+  }
+
+  try {
+    let aggregated = "";
+    const stream = await client.chat.completions.create({
+      model: body.model,
+      messages,
+      temperature: body.temperature,
+      top_p: body.top_p,
+      presence_penalty: body.presence_penalty,
+      frequency_penalty: body.frequency_penalty,
+      max_tokens: Math.max(1, Math.min(256, body.max_tokens)),
+      stream: true,
+      // logprobs intentionally omitted for stream deltas; we fetch final LPs after
+    });
+
+    for await (const chunk of stream) {
+      const part = chunk.choices?.[0]?.delta?.content ?? "";
+      if (part) {
+        aggregated += part;
+        write({ type: "delta", delta: part });
+      }
+    }
+
+    // After stream completes, fetch full logprobs in a second request (best-effort)
+    try {
+      const completion = await client.chat.completions.create({
+        model: body.model,
+        messages, // same prompt context
+        temperature: body.temperature,
+        top_p: body.top_p,
+        presence_penalty: body.presence_penalty,
+        frequency_penalty: body.frequency_penalty,
+        max_tokens: Math.max(1, Math.min(256, body.max_tokens)),
+        logprobs: true,
+        top_logprobs: Math.max(1, Math.min(10, body.top_logprobs)),
+      });
+
+      const choice = completion.choices[0];
+      const text = choice.message.content ?? "";
+      const logprobItems = choice.logprobs?.content;
+      const tokens = (logprobItems ?? []).map((lp, i) => ({
+        index: i,
+        token: lp.token ?? "",
+        logprob: lp.logprob ?? Number.NEGATIVE_INFINITY,
+        prob: Math.exp(lp.logprob ?? Number.NEGATIVE_INFINITY),
+        top_logprobs: (lp.top_logprobs ?? []).map((alt) => ({
+          token: alt.token ?? "",
+          logprob: alt.logprob ?? Number.NEGATIVE_INFINITY,
+          prob: Math.exp(alt.logprob ?? Number.NEGATIVE_INFINITY),
+        })),
+      }));
+
+      const latency = Date.now() - start;
+      write({
+        type: "done",
+        completion: {
+          text,
+          tokens,
+          finish_reason: choice.finish_reason ?? "unknown",
+          usage: completion.usage ?? {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+          },
+          model: completion.model,
+          latency,
+          force_prefix_echo,
+        },
+      });
+    } catch (postErr) {
+      req.log.warn({ err: postErr }, "Failed to fetch final logprobs; sending text only");
+      write({ type: "done", completion: { text: aggregated, tokens: [], finish_reason: "stop", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, model: body.model, latency: Date.now() - start, force_prefix_echo } });
+    } finally {
+      end();
+    }
+  } catch (err) {
+    req.log.error({ err }, "Stream error");
+    write({ type: "done", error: (err as Error).message });
+    end();
+  }
+});
+
 app.listen({ host: HOST, port: PORT }).then(() => {
   app.log.info(`API listening on http://${HOST}:${PORT}`);
 });

@@ -1,18 +1,19 @@
 import type { CompletionLP, ModelInfo } from "@/types/logprob";
+import type { Transport } from "@/types/transport";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 export interface CompleteParams {
-  messages: { role: "user" | "assistant"; content: string }[];
-  model: string;
-  temperature: number;
-  top_p: number;
-  presence_penalty: number;
-  frequency_penalty: number;
-  max_tokens: number; // 1–256
-  top_logprobs: number; // 1–10
-  force_prefix?: string;
-  continuation_mode?: "assistant-prefix" | "hint";
+  readonly messages: readonly { readonly role: "user" | "assistant"; readonly content: string }[];
+  readonly model: string;
+  readonly temperature: number;
+  readonly top_p: number;
+  readonly presence_penalty: number;
+  readonly frequency_penalty: number;
+  readonly max_tokens: number; // 1–256
+  readonly top_logprobs: number; // 1–10
+  readonly force_prefix?: string;
+  readonly continuation_mode?: "assistant-prefix" | "hint";
 }
 
 async function json<T>(res: Response): Promise<T> {
@@ -44,4 +45,10 @@ export async function complete(params: CompleteParams): Promise<CompletionLP> {
     body: JSON.stringify(body),
   });
   return json<CompletionLP>(res);
+}
+
+export class RestTransport implements Transport {
+  complete(params: Readonly<CompleteParams>): Promise<CompletionLP> {
+    return complete(params as CompleteParams);
+  }
 }
