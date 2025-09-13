@@ -9,7 +9,7 @@ This plan delivers the Logprob Visualizer in small, reviewable phases. Each phas
 - Swappable chart abstraction with a minimal interface.
 
 ## Phase 1 — Static Scaffold (UI Only)
-- Frontend: Shell layout (Transcript | Composer | Right Panel). Static example transcript with mock tokens; placeholder chart component; parameter drawer (disabled submit).
+- Frontend: Shell layout (Transcript | Composer | Right Panel). Static example transcript with mock tokens; placeholder chart component; parameter drawer (disabled submit) with a Temperature slider.
 - Deliverables: Visual layout, token heatmap with placeholder coloring, legends.
 - Review: UI structure, responsive layout, themes.
 
@@ -30,12 +30,12 @@ This plan delivers the Logprob Visualizer in small, reviewable phases. Each phas
 - Review: Route contracts and sample responses.
 
 ## Phase 5 — Connect Models Endpoint
-- Frontend: Models picker uses `/api/models`; auto-disables `top_k` per capability.
-- Deliverables: Param badges reflect active values; empty states for unsupported models.
-- Review: Error toasts for network/offline.
+- Frontend: Fetch models from `/api/models` at runtime (no hardcoded list). Show loading skeleton, error state with retry, and cache results in memory; expose a manual refresh.
+- Deliverables: Param badges reflect active values; Temperature slider visible in header.
+- Review: Network error toasts; verify list updates without rebuild.
 
 ## Phase 6 — Connect Complete (Non‑Streaming)
-- Frontend: API client module (`transport/rest.ts`) returning `CompletionLP`; wire Composer submit; show usage, finish_reason, latency; raw JSON toggle.
+- Frontend: API client module (`transport/rest.ts`) returning `CompletionLP`; wire Composer submit with Temperature slider; show usage, finish_reason, latency; raw JSON toggle.
 - Deliverables: Real completions with token heatmap + chart.
 - Review: Caps enforced (≤256 tokens; ≤10 alternatives); clamp messages surfaced.
 

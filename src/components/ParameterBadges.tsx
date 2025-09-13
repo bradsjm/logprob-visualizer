@@ -14,11 +14,6 @@ export const ParameterBadges = ({ parameters }: ParameterBadgesProps) => {
       <Badge variant="secondary" className="text-xs">
         p={parameters.top_p}
       </Badge>
-      {parameters.top_k && (
-        <Badge variant="secondary" className="text-xs">
-          k={parameters.top_k}
-        </Badge>
-      )}
       <Badge variant="secondary" className="text-xs">
         max={parameters.max_tokens}
       </Badge>

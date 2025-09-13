@@ -9,11 +9,7 @@ import type { CompletionLP, BranchContext, ModelInfo, RunParameters } from "@/ty
 
 const Playground = () => {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string; tokens?: any[] }>>([]);
-  const [selectedModel, setSelectedModel] = useState<ModelInfo>({ 
-    id: "gpt-4o", 
-    name: "GPT-4", 
-    supportsTopK: false 
-  });
+  const [selectedModel, setSelectedModel] = useState<ModelInfo>({ id: "gpt-4o", name: "GPT-4" });
   const [branchContext, setBranchContext] = useState<BranchContext | null>(null);
   const [currentCompletion, setCurrentCompletion] = useState<CompletionLP | null>(null);
   const [runParameters, setRunParameters] = useState<RunParameters>({
@@ -156,6 +152,10 @@ const Playground = () => {
           <ModelSelector 
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
+            temperature={runParameters.temperature}
+            onTemperatureChange={(value) =>
+              setRunParameters((prev) => ({ ...prev, temperature: value }))
+            }
           />
         </div>
         <div className="flex items-center gap-2">
@@ -185,7 +185,6 @@ const Playground = () => {
             branchContext={branchContext}
             parameters={runParameters}
             onParametersChange={setRunParameters}
-            modelSupportsTopK={selectedModel.supportsTopK}
           />
         </div>
 

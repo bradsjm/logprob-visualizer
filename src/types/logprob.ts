@@ -36,7 +36,6 @@ export interface BranchContext {
 export interface ModelInfo {
   id: string;
   name: string;
-  supportsTopK: boolean;
 }
 
 export interface RunParameters {
@@ -46,7 +45,6 @@ export interface RunParameters {
   top_logprobs: number;
   presence_penalty: number;
   frequency_penalty: number;
-  top_k?: number;
 }
 
 export interface ChatMessage {

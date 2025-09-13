@@ -1,21 +1,24 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import type { ModelInfo } from "@/types/logprob";
 
 interface ModelSelectorProps {
   selectedModel: ModelInfo;
   onModelChange: (model: ModelInfo) => void;
+  temperature: number;
+  onTemperatureChange: (value: number) => void;
 }
 
 const AVAILABLE_MODELS: ModelInfo[] = [
-  { id: "gpt-4o", name: "GPT-4", supportsTopK: false },
-  { id: "gpt-4o-mini", name: "GPT-4 Mini", supportsTopK: false },
-  { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", supportsTopK: false },
+  { id: "gpt-4o", name: "GPT-4" },
+  { id: "gpt-4o-mini", name: "GPT-4 Mini" },
+  { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
 ];
 
-export const ModelSelector = ({ selectedModel, onModelChange }: ModelSelectorProps) => {
+export const ModelSelector = ({ selectedModel, onModelChange, temperature, onTemperatureChange }: ModelSelectorProps) => {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-4">
       <Select
         value={selectedModel.id}
         onValueChange={(modelId) => {
@@ -31,24 +34,29 @@ export const ModelSelector = ({ selectedModel, onModelChange }: ModelSelectorPro
         <SelectContent>
           {AVAILABLE_MODELS.map((model) => (
             <SelectItem key={model.id} value={model.id}>
-              <div className="flex items-center justify-between w-full">
-                <span>{model.name}</span>
-                {model.supportsTopK && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    Top-K
-                  </Badge>
-                )}
-              </div>
+              <div className="flex items-center justify-between w-full">{model.name}</div>
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      
-      {!selectedModel.supportsTopK && (
-        <Badge variant="outline" className="text-xs">
-          No Top-K
-        </Badge>
-      )}
+
+      {/* Temperature slider (wired to RunParameters.temperature) */}
+      <div className="flex items-center gap-3 min-w-[220px]">
+        <Label htmlFor="header-temp" className="whitespace-nowrap text-xs text-muted-foreground">
+          Temperature
+        </Label>
+        <div className="flex-1 max-w-[180px]">
+          <Slider
+            id="header-temp"
+            min={0}
+            max={2}
+            step={0.1}
+            value={[temperature]}
+            onValueChange={([v]) => onTemperatureChange(v)}
+          />
+        </div>
+        <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">{temperature.toFixed(1)}</span>
+      </div>
     </div>
   );
 };

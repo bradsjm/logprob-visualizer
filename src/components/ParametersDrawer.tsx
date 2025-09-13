@@ -1,9 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import type { RunParameters } from "@/types/logprob";
 
 interface ParametersDrawerProps {
@@ -11,15 +9,9 @@ interface ParametersDrawerProps {
   onClose: () => void;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
-  modelSupportsTopK: boolean;
 }
 
-export const ParametersDrawer = ({ 
-  isOpen, 
-  parameters, 
-  onParametersChange, 
-  modelSupportsTopK 
-}: ParametersDrawerProps) => {
+export const ParametersDrawer = ({ isOpen, parameters, onParametersChange }: ParametersDrawerProps) => {
   const updateParameter = (key: keyof RunParameters, value: number) => {
     onParametersChange({ ...parameters, [key]: value });
   };
@@ -103,31 +95,7 @@ export const ParametersDrawer = ({
               </p>
             </div>
 
-            {/* Top-k */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="top-k" className={!modelSupportsTopK ? "text-muted-foreground" : ""}>
-                  Top-k: {parameters.top_k || "Off"}
-                </Label>
-                {!modelSupportsTopK && (
-                  <span className="text-xs text-muted-foreground">Not supported</span>
-                )}
-              </div>
-              <Input
-                id="top-k"
-                type="number"
-                min={1}
-                max={100}
-                value={parameters.top_k || ""}
-                onChange={(e) => updateParameter("top_k", parseInt(e.target.value) || undefined)}
-                disabled={!modelSupportsTopK}
-                placeholder="Off"
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                Limits to top-k most likely tokens.
-              </p>
-            </div>
+            {/* Top-k removed */}
 
             {/* Presence penalty */}
             <div className="space-y-2">

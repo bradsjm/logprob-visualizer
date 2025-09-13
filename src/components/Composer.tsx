@@ -11,7 +11,6 @@ interface ComposerProps {
   branchContext: BranchContext | null;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
-  modelSupportsTopK: boolean;
 }
 
 export const Composer = ({ 
@@ -19,8 +18,7 @@ export const Composer = ({
   isLoading, 
   branchContext,
   parameters,
-  onParametersChange,
-  modelSupportsTopK 
+  onParametersChange 
 }: ComposerProps) => {
   const [message, setMessage] = useState("");
   const [showParameters, setShowParameters] = useState(false);
@@ -118,7 +116,6 @@ export const Composer = ({
         onClose={() => setShowParameters(false)}
         parameters={parameters}
         onParametersChange={onParametersChange}
-        modelSupportsTopK={modelSupportsTopK}
       />
     </div>
   );
