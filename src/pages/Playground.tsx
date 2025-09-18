@@ -254,8 +254,8 @@ const Playground = () => {
     null,
   );
   const cancelRequestedRef = useRef(false);
-  const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(true);
-  const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(true);
+  const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(false);
+  const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(false);
   const [liveMessage, setLiveMessage] = useState("");
   const [lastLowIndex, setLastLowIndex] = useState<number | null>(null);
   const composerRef = useRef<ComposerHandle>(null);
@@ -334,13 +334,15 @@ const Playground = () => {
         // Buffer incoming tokens; flush at most once per animation frame
         const tokensBufferRef = { current: [] as TokenLP[] };
         let flushScheduled = false;
+        let flushRaf: number | null = null;
         let haveShownTokens = false;
 
         const scheduleFlush = () => {
           if (flushScheduled) return;
           flushScheduled = true;
-          requestAnimationFrame(() => {
+          flushRaf = requestAnimationFrame(() => {
             flushScheduled = false;
+            flushRaf = null;
             const buffered = tokensBufferRef.current;
             if (buffered.length === 0) return;
             // First time tokens arrive, switch message view to TokenText
@@ -364,6 +366,15 @@ const Playground = () => {
           });
         };
 
+        const cancelPendingFlush = () => {
+          if (flushRaf !== null) {
+            cancelAnimationFrame(flushRaf);
+            flushRaf = null;
+          }
+          flushScheduled = false;
+          tokensBufferRef.current = [];
+        };
+
         const assistantMessage = { role: "assistant" as const, content: streamText };
         setMessages((prev) => [...prev, assistantMessage]);
         const stream = result as Stream<StreamEvent>;
@@ -385,6 +396,7 @@ const Playground = () => {
               tokensBufferRef.current.push(evt.delta);
               scheduleFlush();
             } else if (evt.type === "done") {
+              cancelPendingFlush();
               if (evt.error) {
                 toast("Streaming error", { description: evt.error });
               }
@@ -416,6 +428,7 @@ const Playground = () => {
             throw err;
           }
         } finally {
+          cancelPendingFlush();
           setActiveStream(null);
           cancelRequestedRef.current = false;
         }

@@ -51,8 +51,8 @@ export const ChatTranscript = ({
   isLoading,
   onTokenClick,
   currentCompletion: _currentCompletion,
-  showWhitespaceOverlays = true,
-  showPunctuationOverlays = true,
+  showWhitespaceOverlays = false,
+  showPunctuationOverlays = false,
 }: ChatTranscriptProps) => {
   const { scrollRef, contentRef } = useStickToBottom<HTMLDivElement>();
 

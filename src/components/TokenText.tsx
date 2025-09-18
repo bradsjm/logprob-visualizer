@@ -27,8 +27,8 @@ interface TokenTextProps {
 export const TokenText = ({
   tokens,
   onTokenClick,
-  showWhitespaceOverlays = true,
-  showPunctuationOverlays = true,
+  showWhitespaceOverlays = false,
+  showPunctuationOverlays = false,
   scrollContainerRef,
   quantiles,
 }: TokenTextProps) => {

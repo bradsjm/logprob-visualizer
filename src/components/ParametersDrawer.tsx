@@ -32,8 +32,8 @@ export const ParametersDrawer = ({
   parameters,
   onParametersChange,
   onClose,
-  showWhitespaceOverlays = true,
-  showPunctuationOverlays = true,
+  showWhitespaceOverlays = false,
+  showPunctuationOverlays = false,
   onReadabilityChange,
 }: ParametersDrawerProps) => {
   const updateParameter = (key: keyof RunParameters, value: number) => {
@@ -99,7 +99,8 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Nucleus sampling. Controls diversity by probability mass.
+                Limits choices to the most likely words; lower stays safe,
+                higher invites more variety.
               </p>
             </div>
 
@@ -165,7 +166,8 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Penalizes tokens that appear in the text so far.
+                Encourage fresh topics. Increase to avoid repeating the same
+                ideas.
               </p>
             </div>
 
@@ -186,7 +188,8 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Penalizes tokens based on their frequency.
+                Rein in repeated words. Higher values cut down on echoing
+                phrases.
               </p>
             </div>
           </div>
