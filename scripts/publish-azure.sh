@@ -57,7 +57,7 @@ fi
 
 readonly APP_NAME="${APP_NAME:-logprob-visualizer}"
 readonly INGRESS="${INGRESS:-external}"
-readonly TARGET_PORT="${TARGET_PORT:-8787}"
+readonly TARGET_PORT="${TARGET_PORT:-80}"
 readonly RESOURCE_GROUP="${RESOURCE_GROUP:-}"
 readonly ENVIRONMENT="${ENVIRONMENT:-}"
 readonly LOCATION="${LOCATION:-}"

@@ -9,7 +9,7 @@
     "dev:all": "concurrently -k -n WEB,API -c green,cyan \"npm:server\" \"npm:dev\"",
     "dev": "vite",
     "docker:build": "docker build -t logprob-visualizer:demo .",
-    "docker": "docker run --rm --env-file .env.local -p 8787:80 logprob-visualizer:demo",
+    "docker": "docker run --rm --env-file .env.local -p 8000:80 logprob-visualizer:demo",
     "lint:fix": "eslint . --fix",
     "lint": "eslint .",
     "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\"",
