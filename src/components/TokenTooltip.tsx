@@ -59,7 +59,16 @@ export const TokenTooltip = ({
     };
   }, [isPinned, onClose]);
 
-  const formatPercent = (prob: number) => `${(prob * 100).toFixed(2)}%`;
+  const formatPercent = (prob: number) => {
+    if (!Number.isFinite(prob) || prob < 0) {
+      return "< 0.01%";
+    }
+    const percent = prob * 100;
+    if (percent < 0.01) {
+      return "< 0.01%";
+    }
+    return `${percent.toFixed(2)}%`;
+  };
   const tokenClass =
     min !== undefined && max !== undefined
       ? tokenColorToTextClass(getTokenColorClass(token.logprob, min, max))
@@ -187,7 +196,7 @@ export const TokenTooltip = ({
         {token.top_logprobs && token.top_logprobs.length > 1 && (
           <div className="space-y-2">
             <div className="text-sm font-medium text-popover-foreground">
-              Top alternatives:
+              Top {token.top_logprobs.length} alternatives:
             </div>
             <div className="space-y-1">
               {token.top_logprobs.slice(0, 5).map((alt, index) => {
