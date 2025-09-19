@@ -55,9 +55,9 @@ if ! az account show >/dev/null 2>&1; then
   exit 1
 fi
 
-readonly APP_NAME="${APP_NAME:-trend-to-campaign}"
+readonly APP_NAME="${APP_NAME:-logprob-visualizer}"
 readonly INGRESS="${INGRESS:-external}"
-readonly TARGET_PORT="${TARGET_PORT:-8080}"
+readonly TARGET_PORT="${TARGET_PORT:-8787}"
 readonly RESOURCE_GROUP="${RESOURCE_GROUP:-}"
 readonly ENVIRONMENT="${ENVIRONMENT:-}"
 readonly LOCATION="${LOCATION:-}"
