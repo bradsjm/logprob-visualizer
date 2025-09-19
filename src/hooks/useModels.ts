@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { toast } from "@/components/ui/sonner";
-import { getModels } from "@/lib/transport/rest";
+import { getModels } from "@/lib/api/models";
 import type { ModelInfo } from "@/types/logprob";
 
 export interface UseModelsResult {

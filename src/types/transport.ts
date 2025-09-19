@@ -1,5 +1,20 @@
-import type { CompleteParams } from "@/lib/transport/rest";
 import type { CompletionLP, TokenLP } from "@/types/logprob";
+
+export interface CompleteParams {
+  readonly messages: readonly {
+    readonly role: "user" | "assistant";
+    readonly content: string;
+  }[];
+  readonly model: string;
+  readonly temperature: number;
+  readonly top_p: number;
+  readonly presence_penalty: number;
+  readonly frequency_penalty: number;
+  readonly max_tokens: number; // 1–256
+  readonly top_logprobs: number; // 1–10
+  readonly force_prefix?: string;
+  readonly continuation_mode?: "assistant-prefix" | "hint";
+}
 
 export interface StreamDoneEvent {
   readonly type: "done";
@@ -25,8 +40,7 @@ export interface Stream<TEvent> extends AsyncIterable<TEvent> {
 
 export interface Transport {
   /**
-   * For REST transports, returns a Promise<CompletionLP>.
-   * For streaming transports, returns a Stream<StreamEvent> that yields deltas and a final done event.
+   * Starts a completion request and yields streaming events until completion.
    */
-  complete(params: Readonly<CompleteParams>): Promise<CompletionLP> | Stream<StreamEvent>;
+  complete(params: Readonly<CompleteParams>): Stream<StreamEvent>;
 }

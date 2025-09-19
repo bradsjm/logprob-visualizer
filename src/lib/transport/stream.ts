@@ -1,15 +1,12 @@
-import type { CompleteParams } from "@/lib/transport/rest";
-import type { CompletionLP } from "@/types/logprob";
-import type { Stream, StreamEvent, Transport } from "@/types/transport";
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+import { API_BASE } from "@/lib/api/client";
+import type { CompleteParams, Stream, StreamEvent, Transport } from "@/types/transport";
 
 function buildBody(params: Readonly<CompleteParams>): CompleteParams {
   return {
     ...params,
     max_tokens: Math.max(1, Math.min(256, params.max_tokens)),
     top_logprobs: Math.max(1, Math.min(10, params.top_logprobs)),
-  } as CompleteParams;
+  } satisfies CompleteParams;
 }
 
 async function* parseNdjson(
@@ -69,6 +66,3 @@ export class StreamTransport implements Transport {
     return iterable;
   }
 }
-
-export type { CompletionLP };
-

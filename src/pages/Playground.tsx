@@ -306,7 +306,7 @@ const Playground = () => {
     setLiveMessage("Sending request...");
 
     try {
-      const result = transport.complete({
+      const stream = transport.complete({
         messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
         model: selectedModel.id,
         temperature: runParameters.temperature,
@@ -317,121 +317,106 @@ const Playground = () => {
         top_logprobs: runParameters.top_logprobs,
       });
 
-      if (typeof (result as Promise<unknown>).then === "function") {
-        // REST mode
-        const response = (await result) as CompletionLP;
-        const assistantMessage = {
-          role: "assistant" as const,
-          content: response.text,
-          tokens: response.tokens,
-        };
-        setMessages([...newMessages, assistantMessage]);
-        startChartTransition(() => setCurrentCompletion(response));
-        // Live region updated to "Response ready" once transition completes (see effect below)
-      } else {
-        // Streaming mode
-        let streamText = "";
-        // Buffer incoming tokens; flush at most once per animation frame
-        const tokensBufferRef = { current: [] as TokenLP[] };
-        let flushScheduled = false;
-        let flushRaf: number | null = null;
-        let haveShownTokens = false;
+      let streamText = "";
+      // Buffer incoming tokens; flush at most once per animation frame
+      const tokensBufferRef = { current: [] as TokenLP[] };
+      let flushScheduled = false;
+      let flushRaf: number | null = null;
+      let haveShownTokens = false;
 
-        const scheduleFlush = () => {
-          if (flushScheduled) return;
-          flushScheduled = true;
-          flushRaf = requestAnimationFrame(() => {
-            flushScheduled = false;
-            flushRaf = null;
-            const buffered = tokensBufferRef.current;
-            if (buffered.length === 0) return;
-            // First time tokens arrive, switch message view to TokenText
+      const scheduleFlush = () => {
+        if (flushScheduled) return;
+        flushScheduled = true;
+        flushRaf = requestAnimationFrame(() => {
+          flushScheduled = false;
+          flushRaf = null;
+          const buffered = tokensBufferRef.current;
+          if (buffered.length === 0) return;
+          // First time tokens arrive, switch message view to TokenText
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1] as ChatMessage | undefined;
+            if (!last) return prev;
+            const existingTokens = last.tokens as TokenLP[] | undefined;
+            const merged = existingTokens && existingTokens.length > 0
+              ? [...existingTokens, ...buffered]
+              : [...buffered];
+            next[next.length - 1] = {
+              role: "assistant" as const,
+              content: streamText,
+              tokens: merged,
+            };
+            return next;
+          });
+          tokensBufferRef.current = [];
+          haveShownTokens = true;
+        });
+      };
+
+      const cancelPendingFlush = () => {
+        if (flushRaf !== null) {
+          cancelAnimationFrame(flushRaf);
+          flushRaf = null;
+        }
+        flushScheduled = false;
+        tokensBufferRef.current = [];
+      };
+
+      const assistantMessage = { role: "assistant" as const, content: streamText };
+      setMessages((prev) => [...prev, assistantMessage]);
+      setActiveStream(stream);
+      try {
+        for await (const evt of stream) {
+          if (evt.type === "delta") {
+            streamText += evt.delta;
+            // Only update text if we haven't switched to token view yet
+            if (!haveShownTokens) {
+              setMessages((prev) => {
+                const next = [...prev];
+                next[next.length - 1] = { role: "assistant" as const, content: streamText };
+                return next;
+              });
+            }
+            setLiveMessage("Streaming response…");
+          } else if (evt.type === "logprobs") {
+            tokensBufferRef.current.push(evt.delta);
+            scheduleFlush();
+          } else if (evt.type === "done") {
+            cancelPendingFlush();
+            if (evt.error) {
+              toast("Streaming error", { description: evt.error });
+            }
+            const finalText = evt.completion?.text ?? streamText;
             setMessages((prev) => {
               const next = [...prev];
-              const last = next[next.length - 1] as ChatMessage | undefined;
-              if (!last) return prev;
-              const existingTokens = last.tokens as TokenLP[] | undefined;
-              const merged = existingTokens && existingTokens.length > 0
-                ? [...existingTokens, ...buffered]
-                : [...buffered];
               next[next.length - 1] = {
                 role: "assistant" as const,
-                content: streamText,
-                tokens: merged,
+                content: finalText,
+                tokens: evt.completion?.tokens,
               };
               return next;
             });
-            tokensBufferRef.current = [];
-            haveShownTokens = true;
-          });
-        };
-
-        const cancelPendingFlush = () => {
-          if (flushRaf !== null) {
-            cancelAnimationFrame(flushRaf);
-            flushRaf = null;
-          }
-          flushScheduled = false;
-          tokensBufferRef.current = [];
-        };
-
-        const assistantMessage = { role: "assistant" as const, content: streamText };
-        setMessages((prev) => [...prev, assistantMessage]);
-        const stream = result as Stream<StreamEvent>;
-        setActiveStream(stream);
-        try {
-          for await (const evt of stream) {
-            if (evt.type === "delta") {
-              streamText += evt.delta;
-              // Only update text if we haven't switched to token view yet
-              if (!haveShownTokens) {
-                setMessages((prev) => {
-                  const next = [...prev];
-                  next[next.length - 1] = { role: "assistant" as const, content: streamText };
-                  return next;
-                });
-              }
-              setLiveMessage("Streaming response…");
-            } else if (evt.type === "logprobs") {
-              tokensBufferRef.current.push(evt.delta);
-              scheduleFlush();
-            } else if (evt.type === "done") {
-              cancelPendingFlush();
-              if (evt.error) {
-                toast("Streaming error", { description: evt.error });
-              }
-              const finalText = evt.completion?.text ?? streamText;
-              setMessages((prev) => {
-                const next = [...prev];
-                next[next.length - 1] = {
-                  role: "assistant" as const,
-                  content: finalText,
-                  tokens: evt.completion?.tokens,
-                };
-                return next;
-              });
-              if (evt.completion) {
-                // Deprioritize chart render so final text paints first
-                startChartTransition(() => setCurrentCompletion(evt.completion!));
-                // Live region will be set when transition completes
-              } else {
-                setLiveMessage("Response complete (no chart data)");
-              }
+            if (evt.completion) {
+              // Deprioritize chart render so final text paints first
+              startChartTransition(() => setCurrentCompletion(evt.completion!));
+              // Live region will be set when transition completes
+            } else {
+              setLiveMessage("Response complete (no chart data)");
             }
           }
-        } catch (err) {
-          const name = (err as { name?: string } | null)?.name;
-          if (name === "AbortError" || cancelRequestedRef.current) {
-            setLiveMessage("Streaming canceled");
-            // leave partial message as-is; no chart update
-          } else {
-            throw err;
-          }
-        } finally {
-          cancelPendingFlush();
-          setActiveStream(null);
-          cancelRequestedRef.current = false;
         }
+      } catch (err) {
+        const name = (err as { name?: string } | null)?.name;
+        if (name === "AbortError" || cancelRequestedRef.current) {
+          setLiveMessage("Streaming canceled");
+          // leave partial message as-is; no chart update
+        } else {
+          throw err;
+        }
+      } finally {
+        cancelPendingFlush();
+        setActiveStream(null);
+        cancelRequestedRef.current = false;
       }
     } catch (error) {
       const message = (error as Error).message;
