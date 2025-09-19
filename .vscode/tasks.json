@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "npm: build",
+      "type": "npm",
+      "script": "build",
+      "detail": "Create a production build with Vite.",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: lint:fix",
+      "type": "npm",
+      "script": "lint:fix",
+      "detail": "Run ESLint with automatic fixes.",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "npm: typecheck",
+      "type": "npm",
+      "script": "typecheck",
+      "detail": "Run TypeScript type checking with tsconfig.app.json.",
+      "group": "test",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "npm: pretty",
+      "type": "npm",
+      "script": "pretty",
+      "detail": "Format source files with Prettier.",
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: docker:build",
+      "type": "npm",
+      "script": "docker:build",
+      "detail": "Build the Docker image locally.",
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: docker",
+      "type": "npm",
+      "script": "docker",
+      "detail": "Run the Dockerized app with local environment variables.",
+      "problemMatcher": []
+    }
+  ]
+}
