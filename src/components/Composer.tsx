@@ -35,12 +35,18 @@ interface ComposerProps {
   onClearHistory?: () => void;
 }
 
+/**
+ * Imperative handle exposed by the composer for focusing, updating, or opening parameter controls.
+ */
 export interface ComposerHandle {
   focus: () => void;
   openParameters: () => void;
   setMessage: (value: string) => void;
 }
 
+/**
+ * Provides the chat composer UI for authoring prompts and adjusting generation parameters.
+ */
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(
   function Composer(
     {
@@ -202,7 +208,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div>Cmd/Ctrl+Enter to send</div>
-              <div>Max tokens: {parameters.max_tokens}</div>
+              <div>Max completion tokens: {parameters.max_completion_tokens}</div>
             </div>
           </form>
         </div>

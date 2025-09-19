@@ -4,7 +4,7 @@ import type { CompleteParams, Stream, StreamEvent, Transport } from "@/types/tra
 function buildBody(params: Readonly<CompleteParams>): CompleteParams {
   return {
     ...params,
-    max_tokens: Math.max(1, Math.min(256, params.max_tokens)),
+    max_completion_tokens: Math.max(1, Math.min(256, params.max_completion_tokens)),
     top_logprobs: Math.max(1, Math.min(10, params.top_logprobs)),
   } satisfies CompleteParams;
 }
@@ -35,6 +35,9 @@ async function* parseNdjson(
   }
 }
 
+/**
+ * Implements the transport contract using the NDJSON streaming completion endpoint.
+ */
 export class StreamTransport implements Transport {
   complete(params: Readonly<CompleteParams>): Stream<StreamEvent> {
     const controller = new AbortController();

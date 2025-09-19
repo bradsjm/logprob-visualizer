@@ -16,6 +16,9 @@ interface TokenTooltipProps {
   anchorEl?: HTMLElement | null;
 }
 
+/**
+ * Provides a pinned tooltip detailing token probabilities and interactive replacements.
+ */
 export const TokenTooltip = ({
   token,
   onAlternativeClick,

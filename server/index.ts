@@ -71,7 +71,7 @@ const CompleteRequest = z.object({
   // top_k removed
   presence_penalty: z.number().min(-2).max(2).default(0),
   frequency_penalty: z.number().min(-2).max(2).default(0),
-  max_tokens: z.number().int().min(1).max(256).default(128),
+  max_completion_tokens: z.number().int().min(1).max(256).default(128),
   top_logprobs: z.number().int().min(1).max(10).default(5),
   force_prefix: z.string().optional(),
   continuation_mode: z.enum(["assistant-prefix", "hint"]).optional(),
@@ -202,7 +202,10 @@ app.post("/api/complete/stream", async (req, reply) => {
       top_p: body.top_p,
       presence_penalty: body.presence_penalty,
       frequency_penalty: body.frequency_penalty,
-      max_tokens: Math.max(1, Math.min(256, body.max_tokens)),
+      max_completion_tokens: Math.max(
+        1,
+        Math.min(256, body.max_completion_tokens),
+      ),
       logprobs: true,
       top_logprobs: Math.max(1, Math.min(10, body.top_logprobs)),
     });

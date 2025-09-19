@@ -31,6 +31,9 @@ interface AnalysisPanelProps {
   isLoadingChart?: boolean;
 }
 
+/**
+ * Visualizes completion diagnostics, probabilities, and metadata for the active transcript.
+ */
 export const AnalysisPanel = ({
   completion,
   onTokenClick,
@@ -59,7 +62,7 @@ export const AnalysisPanel = ({
   const finishReasonClass =
     r === "stop" || r === "end_turn" || r === "completed"
       ? "text-[hsl(var(--success))]"
-      : r === "length" || r === "max_tokens"
+      : r === "length" || r === "max_completion_tokens"
         ? "text-destructive"
         : r === "content_filter"
           ? "text-[hsl(var(--warning))]"

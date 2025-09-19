@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
+/**
+ * Displays a simple 404 page and logs the missing route for diagnostics.
+ */
 const NotFound = () => {
   const location = useLocation();
 

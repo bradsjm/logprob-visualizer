@@ -9,6 +9,9 @@ export interface PresetChipsProps {
  * Small preset chip buttons for quick parameter changes.
  * Local state only; no network or persistence.
  */
+/**
+ * Presents curated parameter presets as quick-apply chips for common exploration modes.
+ */
 export const PresetChips = ({ onApplyPreset }: PresetChipsProps) => {
   const applyDeterministic = () => onApplyPreset({ temperature: 0, top_p: 1 });
   const applyCreative = () => onApplyPreset({ temperature: 1.2, top_p: 1 });

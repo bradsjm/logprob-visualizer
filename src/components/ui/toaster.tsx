@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Renders the global toast viewport and active toasts sourced from the toast hook.
+ */
 export function Toaster() {
   const { toasts } = useToast();
 

@@ -188,12 +188,15 @@ const clamp = (v: number, min: number, max: number): number =>
 const DEFAULT_PARAMS: Readonly<RunParameters> = Object.freeze({
   temperature: 0.7,
   top_p: 1.0,
-  max_tokens: 128,
+  max_completion_tokens: 128,
   top_logprobs: 5,
   presence_penalty: 0,
   frequency_penalty: 0,
 });
 
+/**
+ * Main playground view combining chat, analysis, and parameter controls for logprob exploration.
+ */
 const Playground = () => {
   const { models } = useModels();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -226,8 +229,13 @@ const Playground = () => {
     return {
       temperature: n("temperature", DEFAULT_PARAMS.temperature, 0, 2),
       top_p: n("top_p", DEFAULT_PARAMS.top_p, 0, 1),
-      max_tokens: Math.round(
-        n("max_tokens", DEFAULT_PARAMS.max_tokens, 1, 256),
+      max_completion_tokens: Math.round(
+        n(
+          "max_completion_tokens",
+          DEFAULT_PARAMS.max_completion_tokens,
+          1,
+          256,
+        ),
       ),
       top_logprobs: Math.round(
         n("top_logprobs", DEFAULT_PARAMS.top_logprobs, 1, 10),
@@ -289,7 +297,10 @@ const Playground = () => {
     next.set("model", selectedModel.id);
     next.set("temperature", runParameters.temperature.toFixed(2));
     next.set("top_p", runParameters.top_p.toFixed(2));
-    next.set("max_tokens", String(runParameters.max_tokens));
+    next.set(
+      "max_completion_tokens",
+      String(runParameters.max_completion_tokens),
+    );
     next.set("top_logprobs", String(runParameters.top_logprobs));
     next.set("presence_penalty", runParameters.presence_penalty.toFixed(2));
     next.set("frequency_penalty", runParameters.frequency_penalty.toFixed(2));
@@ -313,7 +324,7 @@ const Playground = () => {
         top_p: runParameters.top_p,
         presence_penalty: runParameters.presence_penalty,
         frequency_penalty: runParameters.frequency_penalty,
-        max_tokens: runParameters.max_tokens,
+        max_completion_tokens: runParameters.max_completion_tokens,
         top_logprobs: runParameters.top_logprobs,
       });
 

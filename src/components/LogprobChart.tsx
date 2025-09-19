@@ -36,6 +36,9 @@ type ActivePayload = {
 };
 type ChartClickEvent = { activePayload?: ActivePayload[] };
 
+/**
+ * Renders the token probability bar chart with interactive focus and streaming states.
+ */
 export const LogprobChart = ({
   tokens,
   onTokenClick,

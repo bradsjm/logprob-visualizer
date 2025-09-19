@@ -61,6 +61,9 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout);
 };
 
+/**
+ * Manages the toast collection by applying mutations derived from dispatched toast actions.
+ */
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
@@ -129,6 +132,9 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">;
 
+/**
+ * Enqueues a toast and returns helpers for updating or dismissing the resulting entry.
+ */
 function toast({ ...props }: Toast) {
   const id = genId();
 
@@ -158,6 +164,9 @@ function toast({ ...props }: Toast) {
   };
 }
 
+/**
+ * Subscribes to toast state updates and exposes helpers for creating and dismissing toasts.
+ */
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);
 
