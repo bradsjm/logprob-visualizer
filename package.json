@@ -1,21 +1,22 @@
 {
   "name": "logprobs-viewer",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "build": "vite build",
+    "dev:all": "concurrently -k -n WEB,API -c green,cyan \"npm:server\" \"npm:dev\"",
+    "dev": "vite",
+    "docker:build": "docker build -t logprob-visualizer:demo .",
+    "docker": "docker run --rm --env-file .env.local -p 8787:80 logprob-visualizer:demo",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "lint": "eslint .",
     "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\"",
     "preview": "vite preview",
-    "dev:api": "tsx server/index.ts",
-    "dev:all": "concurrently -k -n WEB,API -c green,cyan \"npm:dev\" \"npm:dev:api\"",
-    "docker:build": "docker build -t logprob-visualizer:demo .",
-    "docker": "docker run --rm --env-file .env.local -p 8787:80 logprob-visualizer:demo"
+    "publish": "bash ./scripts/publish-azure.sh",
+    "server": "tsx server/index.ts",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
