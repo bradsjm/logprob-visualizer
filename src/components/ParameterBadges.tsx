@@ -5,6 +5,9 @@ interface ParameterBadgesProps {
   parameters: RunParameters;
 }
 
+/**
+ * Displays the active sampling parameters as compact badges for quick reference.
+ */
 export const ParameterBadges = ({ parameters }: ParameterBadgesProps) => {
   return (
     <div className="flex items-center gap-1 flex-wrap">
@@ -12,7 +15,7 @@ export const ParameterBadges = ({ parameters }: ParameterBadgesProps) => {
         p={parameters.top_p}
       </Badge>
       <Badge variant="secondary" className="text-xs">
-        max={parameters.max_tokens}
+        max={parameters.max_completion_tokens}
       </Badge>
       <Badge variant="secondary" className="text-xs">
         top-{parameters.top_logprobs}

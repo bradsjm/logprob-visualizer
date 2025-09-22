@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { StickToBottomInstance } from "use-stick-to-bottom";
 
 import { TokenTooltip } from "./TokenTooltip";
 
@@ -11,24 +12,31 @@ import {
 } from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
 
+type ScrollContainerRef =
+  | React.RefObject<HTMLElement>
+  | StickToBottomInstance["scrollRef"];
+
 interface TokenTextProps {
   tokens: TokenLP[];
   onTokenClick: (tokenIndex: number, newToken: string) => void;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
   /** Optional scroll container to drive progressive virtualization. */
-  scrollContainerRef?: React.RefObject<HTMLElement | null>;
+  scrollContainerRef?: ScrollContainerRef;
   /** Optional precomputed quantiles for consistent coloring across chunks. */
   quantiles?: { readonly min: number; readonly max: number };
 }
 
 // (moved to utils)
 
+/**
+ * Renders token spans with probabilistic styling and progressive virtualization of large completions.
+ */
 export const TokenText = ({
   tokens,
   onTokenClick,
-  showWhitespaceOverlays = true,
-  showPunctuationOverlays = true,
+  showWhitespaceOverlays = false,
+  showPunctuationOverlays = false,
   scrollContainerRef,
   quantiles,
 }: TokenTextProps) => {

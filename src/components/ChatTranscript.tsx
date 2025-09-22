@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useStickToBottom } from "use-stick-to-bottom";
+import type { StickToBottomInstance } from "use-stick-to-bottom";
 
 import { TokenText } from "./TokenText";
 
@@ -15,12 +16,14 @@ interface ChatTranscriptProps {
   showPunctuationOverlays?: boolean;
 }
 
+type ScrollContainerRef = StickToBottomInstance["scrollRef"];
+
 interface AssistantTokensProps {
   readonly tokens: NonNullable<ChatMessage["tokens"]>;
   readonly onTokenClick: (tokenIndex: number, newToken: string) => void;
   readonly showWhitespaceOverlays: boolean;
   readonly showPunctuationOverlays: boolean;
-  readonly scrollContainerRef: React.RefObject<HTMLDivElement>;
+  readonly scrollContainerRef: ScrollContainerRef;
 }
 
 const AssistantTokens = ({
@@ -38,23 +41,24 @@ const AssistantTokens = ({
       onTokenClick={onTokenClick}
       showWhitespaceOverlays={showWhitespaceOverlays}
       showPunctuationOverlays={showPunctuationOverlays}
-      scrollContainerRef={
-        scrollContainerRef as unknown as React.RefObject<HTMLElement>
-      }
+      scrollContainerRef={scrollContainerRef}
       quantiles={q}
     />
   );
 };
 
+/**
+ * Displays the conversation history with streaming assistant tokens and progressive scrolling.
+ */
 export const ChatTranscript = ({
   messages,
   isLoading,
   onTokenClick,
   currentCompletion: _currentCompletion,
-  showWhitespaceOverlays = true,
-  showPunctuationOverlays = true,
+  showWhitespaceOverlays = false,
+  showPunctuationOverlays = false,
 }: ChatTranscriptProps) => {
-  const { scrollRef, contentRef } = useStickToBottom<HTMLDivElement>();
+  const { scrollRef, contentRef } = useStickToBottom();
 
   // Consider any trailing assistant message (text-only or tokenized) as an active stream panel.
   // This prevents showing a second placeholder panel during streaming when tokens arrive.

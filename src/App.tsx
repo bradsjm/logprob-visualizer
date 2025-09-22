@@ -10,6 +10,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const queryClient = new QueryClient();
 
+/**
+ * Application root wiring providers, routing, and global toasters.
+ */
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

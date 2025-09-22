@@ -17,6 +17,9 @@ interface ModelSelectorProps {
   readonly onTemperatureChange: (value: number) => void;
 }
 
+/**
+ * Lists available models and reports selection changes for downstream generation requests.
+ */
 export const ModelSelector = ({
   models,
   selectedModel,

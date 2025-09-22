@@ -1,11 +1,17 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import dotenv from "dotenv";
 import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
 import { z } from "zod";
+
+// Load env: prefer .env.local if present
+const envLocalPath = path.resolve(process.cwd(), ".env.local");
+if (fs.existsSync(envLocalPath)) dotenv.config({ path: envLocalPath });
+else dotenv.config();
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -65,7 +71,7 @@ const CompleteRequest = z.object({
   // top_k removed
   presence_penalty: z.number().min(-2).max(2).default(0),
   frequency_penalty: z.number().min(-2).max(2).default(0),
-  max_tokens: z.number().int().min(1).max(256).default(128),
+  max_completion_tokens: z.number().int().min(1).max(256).default(128),
   top_logprobs: z.number().int().min(1).max(10).default(5),
   force_prefix: z.string().optional(),
   continuation_mode: z.enum(["assistant-prefix", "hint"]).optional(),
@@ -102,104 +108,6 @@ app.get("/api/models", async (_req, reply) => {
     app.log.warn("No models loaded from models.json; returning empty list");
   }
   reply.send(availableModels);
-});
-
-app.post("/api/complete", async (req, reply) => {
-  const start = Date.now();
-  const parsed = CompleteRequest.safeParse(req.body);
-  if (!parsed.success) {
-    return reply.code(400).send({
-      error: "Invalid request",
-      issues: parsed.error.issues,
-      request_id: req.id,
-    });
-  }
-  const body = parsed.data;
-
-  // Clamp ranges explicitly (defense in depth)
-  const clampedTopLogprobs = Math.max(1, Math.min(10, body.top_logprobs));
-  const clampedMaxTokens = Math.max(1, Math.min(256, body.max_tokens));
-
-  // Handle force_prefix behavior
-  const messages = [...body.messages];
-  let force_prefix_echo: string | undefined;
-  if (
-    body.force_prefix &&
-    (body.continuation_mode ?? "assistant-prefix") === "assistant-prefix"
-  ) {
-    messages.push({ role: "assistant", content: body.force_prefix });
-    force_prefix_echo = body.force_prefix;
-  }
-
-  if (!effectiveApiKey) {
-    return reply
-      .code(500)
-      .send({ error: "Missing OPENAI_API_KEY on server", request_id: req.id });
-  }
-
-  const client = new OpenAI({
-    apiKey: effectiveApiKey,
-    baseURL: effectiveBaseUrl,
-  });
-
-  try {
-    const completion = await client.chat.completions.create({
-      model: body.model,
-      messages,
-      temperature: body.temperature,
-      top_p: body.top_p,
-      presence_penalty: body.presence_penalty,
-      frequency_penalty: body.frequency_penalty,
-      max_tokens: clampedMaxTokens,
-      logprobs: true,
-      top_logprobs: clampedTopLogprobs,
-    });
-
-    const choice = completion.choices[0];
-    const text = choice.message.content ?? "";
-    const logprobItems = choice.logprobs?.content;
-    if (!logprobItems || logprobItems.length === 0) {
-      return reply.code(409).send({
-        error: "Model response lacked token logprobs. Pick a supported model.",
-        request_id: req.id,
-      });
-    }
-
-    const tokens = logprobItems.map((lp, i) => ({
-      index: i,
-      token: lp.token ?? "",
-      logprob: lp.logprob ?? Number.NEGATIVE_INFINITY,
-      prob: Math.exp(lp.logprob ?? Number.NEGATIVE_INFINITY),
-      top_logprobs: (lp.top_logprobs ?? []).map((alt) => ({
-        token: alt.token ?? "",
-        logprob: alt.logprob ?? Number.NEGATIVE_INFINITY,
-        prob: Math.exp(alt.logprob ?? Number.NEGATIVE_INFINITY),
-      })),
-    }));
-
-    const latency = Date.now() - start;
-    return reply.send({
-      text,
-      tokens,
-      finish_reason: choice.finish_reason ?? "unknown",
-      usage: completion.usage ?? {
-        prompt_tokens: 0,
-        completion_tokens: 0,
-        total_tokens: 0,
-      },
-      model: completion.model,
-      latency,
-      force_prefix_echo,
-      request_id: req.id,
-    });
-  } catch (err: unknown) {
-    req.log.error({ err }, "OpenAI error");
-    return reply.code(502).send({
-      error: "Upstream OpenAI error",
-      details: (err as Error).message,
-      request_id: req.id,
-    });
-  }
 });
 
 // NDJSON streaming completion route
@@ -242,20 +150,35 @@ app.post("/api/complete/stream", async (req, reply) => {
   reply.raw.setHeader("Cache-Control", "no-cache");
   reply.raw.setHeader("x-request-id", req.id);
 
-  const write = (obj: unknown) => {
+  let responseClosed = false;
+
+  const safeWrite = (obj: unknown): void => {
+    if (responseClosed || reply.raw.writableEnded) {
+      return;
+    }
     try {
-      reply.raw.write(JSON.stringify(obj) + "\n");
+      reply.raw.write(`${JSON.stringify(obj)}\n`);
     } catch (err) {
       req.log.error({ err }, "Write failed");
+      safeEnd();
     }
   };
 
-  const end = () => {
+  const safeEnd = (): void => {
+    if (responseClosed || reply.raw.writableEnded) {
+      return;
+    }
+    responseClosed = true;
     try {
       reply.raw.end();
-    } catch {
-      // noop
+    } catch (err) {
+      req.log.error({ err }, "End failed");
     }
+  };
+
+  const sendDone = (payload: unknown): void => {
+    safeWrite(payload);
+    safeEnd();
   };
 
   try {
@@ -279,7 +202,10 @@ app.post("/api/complete/stream", async (req, reply) => {
       top_p: body.top_p,
       presence_penalty: body.presence_penalty,
       frequency_penalty: body.frequency_penalty,
-      max_tokens: Math.max(1, Math.min(256, body.max_tokens)),
+      max_completion_tokens: Math.max(
+        1,
+        Math.min(256, body.max_completion_tokens),
+      ),
       logprobs: true,
       top_logprobs: Math.max(1, Math.min(10, body.top_logprobs)),
     });
@@ -288,7 +214,7 @@ app.post("/api/complete/stream", async (req, reply) => {
     stream.on("content.delta", ({ delta }: { delta: string }) => {
       if (delta) {
         aggregated += delta;
-        write({ type: "delta", delta });
+        safeWrite({ type: "delta", delta });
       }
     });
 
@@ -317,7 +243,7 @@ app.post("/api/complete/stream", async (req, reply) => {
             })),
           };
           tokens.push(tokenOut);
-          write({ type: "logprobs", delta: tokenOut });
+          safeWrite({ type: "logprobs", delta: tokenOut });
         }
       }
     );
@@ -327,8 +253,7 @@ app.post("/api/complete/stream", async (req, reply) => {
 
     stream.on("error", (err: unknown) => {
       req.log.error({ err }, "Stream error");
-      write({ type: "done", error: (err as Error).message });
-      end();
+      sendDone({ type: "done", error: (err as Error).message });
     });
     // Keep the route alive until the stream finishes, then emit final object
     await stream.done();
@@ -341,9 +266,9 @@ app.post("/api/complete/stream", async (req, reply) => {
       const usage = final.usage ?? {
         prompt_tokens: 0,
         completion_tokens: tokens.length,
-        total_tokens: (final.usage?.prompt_tokens ?? 0) + tokens.length,
+        total_tokens: tokens.length,
       };
-      write({
+      sendDone({
         type: "done",
         completion: {
           text,
@@ -358,7 +283,7 @@ app.post("/api/complete/stream", async (req, reply) => {
     } catch {
       // If we failed to obtain a final completion (e.g., upstream closed early),
       // emit a best-effort payload with derived token counts.
-      write({
+      sendDone({
         type: "done",
         completion: {
           text: aggregated,
@@ -375,12 +300,11 @@ app.post("/api/complete/stream", async (req, reply) => {
         },
       });
     } finally {
-      end();
+      safeEnd();
     }
   } catch (err) {
     req.log.error({ err }, "Stream error");
-    write({ type: "done", error: (err as Error).message });
-    end();
+    sendDone({ type: "done", error: (err as Error).message });
   }
 });
 

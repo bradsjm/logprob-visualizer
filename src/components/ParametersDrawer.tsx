@@ -27,13 +27,16 @@ interface ParametersDrawerProps {
   }) => void;
 }
 
+/**
+ * Provides a modal drawer for editing sampling parameters and readability overlays.
+ */
 export const ParametersDrawer = ({
   isOpen,
   parameters,
   onParametersChange,
   onClose,
-  showWhitespaceOverlays = true,
-  showPunctuationOverlays = true,
+  showWhitespaceOverlays = false,
+  showPunctuationOverlays = false,
   onReadabilityChange,
 }: ParametersDrawerProps) => {
   const updateParameter = (key: keyof RunParameters, value: number) => {
@@ -99,22 +102,23 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Nucleus sampling. Controls diversity by probability mass.
+                Limits choices to the most likely words; lower stays safe,
+                higher invites more variety.
               </p>
             </div>
 
-            {/* Max tokens */}
+            {/* Max completion tokens */}
             <div className="space-y-2">
-              <Label htmlFor="max-tokens">Max tokens</Label>
+              <Label htmlFor="max-completion-tokens">Max completion tokens</Label>
               <Input
-                id="max-tokens"
+                id="max-completion-tokens"
                 type="number"
                 min={1}
                 max={256}
-                value={parameters.max_tokens}
+                value={parameters.max_completion_tokens}
                 onChange={(e) =>
                   updateParameter(
-                    "max_tokens",
+                    "max_completion_tokens",
                     Math.min(256, Math.max(1, parseInt(e.target.value) || 1)),
                   )
                 }
@@ -165,7 +169,8 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Penalizes tokens that appear in the text so far.
+                Encourage fresh topics. Increase to avoid repeating the same
+                ideas.
               </p>
             </div>
 
@@ -186,7 +191,8 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Penalizes tokens based on their frequency.
+                Rein in repeated words. Higher values cut down on echoing
+                phrases.
               </p>
             </div>
           </div>
