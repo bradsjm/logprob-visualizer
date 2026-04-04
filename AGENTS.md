@@ -6,6 +6,7 @@
 
 ## Build, Test, and Development Commands
 - `pnpm dev` launches the Vite dev server.
+- `pnpm start` launches the packaged static server from `dist/`.
 - `pnpm build` (or `pnpm build:dev`) creates production artifacts; validate with `pnpm preview` before shipping.
 - `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm lint:fix`, and `pnpm pretty` enforce TypeScript, ESLint, test, and Prettier baselines.
 
@@ -26,3 +27,4 @@
 ## Security & Configuration Tips
 - The app stores provider credentials in browser `localStorage`; any change in that behavior requires explicit review because it affects the security model.
 - Connection settings live entirely on the client; avoid reintroducing hidden runtime configuration paths unless the user explicitly asks for them.
+- The packaged Node runtime is a static file server only. Do not add provider proxying or secret injection there unless explicitly requested.
