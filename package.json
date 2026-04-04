@@ -1,6 +1,30 @@
 {
   "name": "@bradsjm/logprobs-viewer",
   "version": "1.0.0",
+  "description": "Local web UI for exploring token-level log probabilities from OpenAI-compatible chat models.",
+  "keywords": [
+    "logprobs",
+    "openai",
+    "llm",
+    "visualizer",
+    "tokens"
+  ],
+  "homepage": "https://github.com/bradsjm/logprob-visualizer#readme",
+  "bugs": {
+    "url": "https://github.com/bradsjm/logprob-visualizer/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Jonathan Bradshaw",
+    "email": "jb@nrgup.net"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bradsjm/logprob-visualizer.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319",
   "type": "module",
   "bin": {
