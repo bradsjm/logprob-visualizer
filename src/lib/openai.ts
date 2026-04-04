@@ -32,6 +32,13 @@ function resolveRequestBaseUrl(settings: Readonly<ConnectionSettings>): string {
   return resolveBaseUrl(normalizeConnectionSettings(settings).baseUrl);
 }
 
+export class TransientModelCapabilityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TransientModelCapabilityError";
+  }
+}
+
 export async function fetchProviderModels(
   settings: Readonly<ConnectionSettings>,
 ): Promise<ModelInfo[]> {
@@ -230,7 +237,10 @@ export async function* parseOpenAIStream(
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+      buffer += decoder.decode();
+      break;
+    }
 
     buffer += decoder.decode(value, { stream: true });
     let newlineIndex = buffer.indexOf("\n");
@@ -290,10 +300,7 @@ export async function probeModelLogprobsSupport(
         message: detail,
       };
     }
-    return {
-      status: "unknown",
-      message: detail,
-    };
+    throw new TransientModelCapabilityError(detail);
   }
 
   const body = (await response.json()) as {
@@ -301,12 +308,25 @@ export async function probeModelLogprobsSupport(
       logprobs?: { content?: unknown };
     }>;
   };
-  const content = body.choices?.[0]?.logprobs?.content;
-  if (!Array.isArray(content) || content.length === 0) {
+  const choice = body.choices?.[0];
+  if (!isObject(choice)) {
+    throw new TransientModelCapabilityError(
+      "Provider returned an invalid capability probe response.",
+    );
+  }
+
+  if (!("logprobs" in choice) || !isObject(choice.logprobs)) {
     return {
       status: "unsupported",
       message: "Provider returned a completion without logprobs data.",
     };
+  }
+
+  const content = choice.logprobs.content;
+  if (content !== undefined && !Array.isArray(content)) {
+    throw new TransientModelCapabilityError(
+      "Provider returned an invalid logprobs payload.",
+    );
   }
 
   return {

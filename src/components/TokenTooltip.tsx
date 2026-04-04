@@ -8,6 +8,7 @@ import type { TokenLP } from "@/types/logprob";
 
 interface TokenTooltipProps {
   token: TokenLP;
+  tooltipId: string;
   onAlternativeClick: (altToken: string) => void;
   onClose: () => void;
   isPinned: boolean;
@@ -21,6 +22,7 @@ interface TokenTooltipProps {
  */
 export const TokenTooltip = ({
   token,
+  tooltipId,
   onAlternativeClick,
   onClose,
   isPinned,
@@ -147,7 +149,7 @@ export const TokenTooltip = ({
   const content = (
     <div
       ref={tooltipRef}
-      id={`tooltip-${token.index}`}
+      id={tooltipId}
       role="dialog"
       aria-label={`Token probabilities for ${token.token}`}
       className="z-50 p-4 bg-popover border rounded-lg shadow-lg min-w-64 max-w-80 scale-in"

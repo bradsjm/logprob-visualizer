@@ -18,16 +18,7 @@ export function useModelCapability(
       getConnectionCacheKey(settings),
       modelId,
     ],
-    queryFn: async () => {
-      try {
-        return await probeModelLogprobsSupport(settings, modelId!);
-      } catch (error) {
-        return {
-          status: "unknown",
-          message: (error as Error).message,
-        } as const;
-      }
-    },
+    queryFn: async () => probeModelLogprobsSupport(settings, modelId!),
     enabled: settings.apiKey.trim().length > 0 && Boolean(modelId),
     staleTime: Infinity,
     gcTime: Infinity,
@@ -40,6 +31,14 @@ export function useModelCapability(
       status: "checking",
       message: null,
       isLoading: true,
+    };
+  }
+
+  if (query.isError) {
+    return {
+      status: "unknown-transient",
+      message: (query.error as Error).message,
+      isLoading: false,
     };
   }
 

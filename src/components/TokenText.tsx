@@ -19,6 +19,8 @@ type ScrollContainerRef =
 interface TokenTextProps {
   tokens: TokenLP[];
   onTokenClick: (tokenIndex: number, newToken: string) => void;
+  tokenScopeId: string;
+  isInteractive?: boolean;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
   /** Optional scroll container to drive progressive virtualization. */
@@ -35,6 +37,8 @@ interface TokenTextProps {
 export const TokenText = ({
   tokens,
   onTokenClick,
+  tokenScopeId,
+  isInteractive = true,
   showWhitespaceOverlays = false,
   showPunctuationOverlays = false,
   scrollContainerRef,
@@ -122,7 +126,8 @@ export const TokenText = ({
   const renderCount = visibleCount;
   return (
     <div className="relative leading-relaxed" aria-live="polite">
-      {tokens.slice(0, renderCount).map((token, index) => {
+      {tokens.slice(0, renderCount).map((token) => {
+        const tokenIndex = token.index;
         const tokenIsWhitespace = isWhitespaceToken(token.token);
         const tokenIsPunct = isPunctuationToken(token.token);
 
@@ -136,25 +141,37 @@ export const TokenText = ({
           colorClass = "";
           isLowProb = false;
         }
-        const showTooltip = hoveredToken === index || pinnedTooltip === index;
+        const showTooltip =
+          isInteractive &&
+          (hoveredToken === tokenIndex || pinnedTooltip === tokenIndex);
+        const tooltipId = `tooltip-${tokenScopeId}-${tokenIndex}`;
 
         return (
-          <span key={index} className="relative">
+          <span key={tokenIndex} className="relative">
             <span
               ref={(el) => {
-                spanRefs.current[index] = el;
+                spanRefs.current[tokenIndex] = el;
               }}
-              data-token-index={index}
+              data-token-index={tokenIndex}
+              data-token-scope={tokenScopeId}
               className={`token-span ${colorClass} border-b-2 ${isLowProb ? "border-dashed border-border" : "border-transparent"}`}
-              role="button"
-              aria-pressed={pinnedTooltip === index || undefined}
-              tabIndex={0}
-              aria-describedby={showTooltip ? `tooltip-${index}` : undefined}
+              role={isInteractive ? "button" : undefined}
+              aria-pressed={isInteractive && pinnedTooltip === tokenIndex ? true : undefined}
+              tabIndex={isInteractive ? 0 : undefined}
+              aria-describedby={showTooltip ? tooltipId : undefined}
               aria-label={`Token ${JSON.stringify(token.token)}, probability ${(token.prob * 100).toFixed(1)}%`}
-              onMouseEnter={() => setHoveredToken(index)}
-              onMouseLeave={() => setHoveredToken(null)}
-              onClick={() => handleTokenClick(index, token.token)}
-              onKeyDown={(e) => handleTokenKeyDown(e, index, token.token)}
+              onMouseEnter={() => {
+                if (isInteractive) setHoveredToken(tokenIndex);
+              }}
+              onMouseLeave={() => {
+                if (isInteractive) setHoveredToken(null);
+              }}
+              onClick={() => {
+                if (isInteractive) handleTokenClick(tokenIndex, token.token);
+              }}
+              onKeyDown={(e) => {
+                if (isInteractive) handleTokenKeyDown(e, tokenIndex, token.token);
+              }}
             >
               {token.token}
             </span>
@@ -162,15 +179,16 @@ export const TokenText = ({
             {showTooltip && (
               <TokenTooltip
                 token={token}
-                onAlternativeClick={(altToken) => onTokenClick(index, altToken)}
+                tooltipId={tooltipId}
+                onAlternativeClick={(altToken) => onTokenClick(tokenIndex, altToken)}
                 onClose={() => {
                   setPinnedTooltip(null);
                   setHoveredToken(null);
                 }}
-                isPinned={pinnedTooltip === index}
+                isPinned={pinnedTooltip === tokenIndex}
                 min={min}
                 max={max}
-                anchorEl={spanRefs.current[index]}
+                anchorEl={spanRefs.current[tokenIndex]}
               />
             )}
           </span>

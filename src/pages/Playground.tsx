@@ -40,6 +40,25 @@ const DEFAULT_PARAMS: Readonly<RunParameters> = Object.freeze({
   frequency_penalty: 0,
 });
 
+function buildTokenSelector(scopeId: string, tokenIndex: number): string {
+  return `[data-token-scope="${scopeId}"][data-token-index="${tokenIndex}"]`;
+}
+
+function replaceMessage(
+  messages: readonly ChatMessage[],
+  messageId: string,
+  nextMessage: ChatMessage,
+): ChatMessage[] {
+  const nextIndex = messages.findIndex((message) => message.id === messageId);
+  if (nextIndex === -1) {
+    return [...messages];
+  }
+
+  const nextMessages = [...messages];
+  nextMessages[nextIndex] = nextMessage;
+  return nextMessages;
+}
+
 /**
  * Main playground view combining chat, analysis, and parameter controls for logprob exploration.
  */
@@ -67,9 +86,10 @@ const Playground = () => {
     [settings],
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // Branching UI removed; no branch context state
   const [currentCompletion, setCurrentCompletion] =
     useState<CompletionLP | null>(null);
+  const [activeCompletionMessageId, setActiveCompletionMessageId] =
+    useState<string | null>(null);
   const initialParams: RunParameters = useMemo(() => {
     const n = (
       key: keyof RunParameters,
@@ -117,6 +137,10 @@ const Playground = () => {
   const [activeStream, setActiveStream] = useState<Stream<StreamEvent> | null>(
     null,
   );
+  const activeStreamRef = useRef<Stream<StreamEvent> | null>(null);
+  const activeRunIdRef = useRef<number | null>(null);
+  const runSequenceRef = useRef(0);
+  const messageSequenceRef = useRef(0);
   const cancelRequestedRef = useRef(false);
   const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(false);
   const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(false);
@@ -125,6 +149,45 @@ const Playground = () => {
   const composerRef = useRef<ComposerHandle>(null);
   const [isChartPending, startChartTransition] = useTransition();
   const deferredCompletion = useDeferredValue(currentCompletion);
+  const lastHoverRef = useRef<number | null>(null);
+
+  const nextMessageId = (): string => {
+    messageSequenceRef.current += 1;
+    return `message-${messageSequenceRef.current}`;
+  };
+
+  const clearHoveredToken = () => {
+    const previousTokenIndex = lastHoverRef.current;
+    if (
+      typeof previousTokenIndex === "number" &&
+      activeCompletionMessageId !== null
+    ) {
+      const previousElement = document.querySelector(
+        buildTokenSelector(activeCompletionMessageId, previousTokenIndex),
+      );
+      previousElement?.classList.remove("token-chart-hover");
+    }
+    lastHoverRef.current = null;
+  };
+
+  const resetAnalysisState = () => {
+    clearHoveredToken();
+    setCurrentCompletion(null);
+    setActiveCompletionMessageId(null);
+    setLastLowIndex(null);
+  };
+
+  const abortActiveStream = (markCanceled: boolean) => {
+    if (markCanceled) {
+      cancelRequestedRef.current = true;
+    }
+
+    activeRunIdRef.current = null;
+    const stream = activeStreamRef.current;
+    activeStreamRef.current = null;
+    setActiveStream(null);
+    stream?.abort();
+  };
 
   // Announce chart rendering status for a11y
   useEffect(() => {
@@ -253,16 +316,6 @@ const Playground = () => {
       };
     }
 
-    if (capability.status === "unknown") {
-      return {
-        title: "Unable to verify model capability",
-        description:
-          capability.message ??
-          "Capability probing failed, so generation remains blocked.",
-        kind: "unknown-capability" as const,
-      };
-    }
-
     return null;
   }, [
     capability.message,
@@ -273,6 +326,19 @@ const Playground = () => {
     isModelsLoading,
     selectedModel,
   ]);
+
+  const capabilityNotice = useMemo(() => {
+    if (capability.status !== "unknown-transient") {
+      return null;
+    }
+
+    return {
+      title: "Unable to verify logprobs support",
+      description:
+        capability.message ??
+        "Capability probing failed. You can still try a generation request.",
+    };
+  }, [capability.message, capability.status]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -288,9 +354,20 @@ const Playground = () => {
       return;
     }
 
-    const userMessage = { role: "user" as const, content };
+    abortActiveStream(false);
+    resetAnalysisState();
+
+    const runId = runSequenceRef.current + 1;
+    runSequenceRef.current = runId;
+    const userMessage = { id: nextMessageId(), role: "user" as const, content };
+    const assistantMessageId = nextMessageId();
+    const assistantMessage = {
+      id: assistantMessageId,
+      role: "assistant" as const,
+      content: "",
+    };
     const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setIsLoading(true);
     setLiveMessage("Sending request...");
 
@@ -307,11 +384,14 @@ const Playground = () => {
       });
 
       let streamText = "";
-      // Buffer incoming tokens; flush at most once per animation frame
       const tokensBufferRef = { current: [] as TokenLP[] };
       let flushScheduled = false;
       let flushRaf: number | null = null;
       let haveShownTokens = false;
+
+      activeRunIdRef.current = runId;
+      activeStreamRef.current = stream;
+      setActiveStream(stream);
 
       const scheduleFlush = () => {
         if (flushScheduled) return;
@@ -319,23 +399,26 @@ const Playground = () => {
         flushRaf = requestAnimationFrame(() => {
           flushScheduled = false;
           flushRaf = null;
+          if (activeRunIdRef.current !== runId) {
+            return;
+          }
           const buffered = tokensBufferRef.current;
           if (buffered.length === 0) return;
-          // First time tokens arrive, switch message view to TokenText
           setMessages((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1] as ChatMessage | undefined;
-            if (!last) return prev;
-            const existingTokens = last.tokens as TokenLP[] | undefined;
+            const existingMessage = prev.find(
+              (message) => message.id === assistantMessageId,
+            );
+            if (!existingMessage) return prev;
+            const existingTokens = existingMessage.tokens;
             const merged = existingTokens && existingTokens.length > 0
               ? [...existingTokens, ...buffered]
               : [...buffered];
-            next[next.length - 1] = {
+            return replaceMessage(prev, assistantMessageId, {
+              id: assistantMessageId,
               role: "assistant" as const,
               content: streamText,
               tokens: merged,
-            };
-            return next;
+            });
           });
           tokensBufferRef.current = [];
           haveShownTokens = true;
@@ -351,19 +434,25 @@ const Playground = () => {
         tokensBufferRef.current = [];
       };
 
-      const assistantMessage = { role: "assistant" as const, content: streamText };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setActiveStream(stream);
       try {
         for await (const evt of stream) {
+          if (activeRunIdRef.current !== runId) {
+            continue;
+          }
+
           if (evt.type === "delta") {
             streamText += evt.delta;
-            // Only update text if we haven't switched to token view yet
             if (!haveShownTokens) {
               setMessages((prev) => {
-                const next = [...prev];
-                next[next.length - 1] = { role: "assistant" as const, content: streamText };
-                return next;
+                const existingMessage = prev.find(
+                  (message) => message.id === assistantMessageId,
+                );
+                if (!existingMessage) return prev;
+                return replaceMessage(prev, assistantMessageId, {
+                  id: assistantMessageId,
+                  role: "assistant" as const,
+                  content: streamText,
+                });
               });
             }
             setLiveMessage("Streaming response…");
@@ -377,18 +466,23 @@ const Playground = () => {
             }
             const finalText = evt.completion?.text ?? streamText;
             setMessages((prev) => {
-              const next = [...prev];
-              next[next.length - 1] = {
+              const existingMessage = prev.find(
+                (message) => message.id === assistantMessageId,
+              );
+              if (!existingMessage) return prev;
+              return replaceMessage(prev, assistantMessageId, {
+                id: assistantMessageId,
                 role: "assistant" as const,
                 content: finalText,
                 tokens: evt.completion?.tokens,
-              };
-              return next;
+              });
             });
             if (evt.completion) {
-              // Deprioritize chart render so final text paints first
-              startChartTransition(() => setCurrentCompletion(evt.completion!));
-              // Live region will be set when transition completes
+              const completion = evt.completion;
+              startChartTransition(() => {
+                setCurrentCompletion(completion);
+                setActiveCompletionMessageId(assistantMessageId);
+              });
             } else {
               setLiveMessage("Response complete (no chart data)");
             }
@@ -397,17 +491,22 @@ const Playground = () => {
       } catch (err) {
         const name = (err as { name?: string } | null)?.name;
         if (name === "AbortError" || cancelRequestedRef.current) {
+          resetAnalysisState();
           setLiveMessage("Streaming canceled");
-          // leave partial message as-is; no chart update
         } else {
           throw err;
         }
       } finally {
         cancelPendingFlush();
-        setActiveStream(null);
+        if (activeRunIdRef.current === runId) {
+          activeRunIdRef.current = null;
+          activeStreamRef.current = null;
+          setActiveStream(null);
+        }
         cancelRequestedRef.current = false;
       }
     } catch (error) {
+      resetAnalysisState();
       const message = (error as Error).message;
       console.error("Error generating response:", message);
       toast("Request failed", { description: message });
@@ -420,7 +519,7 @@ const Playground = () => {
   };
 
   const handleBranch = (tokenIndex: number, newToken: string) => {
-    if (!currentCompletion) return;
+    if (!currentCompletion || activeCompletionMessageId === null) return;
 
     const prefix = currentCompletion.tokens
       .slice(0, tokenIndex)
@@ -457,7 +556,7 @@ const Playground = () => {
         composerRef.current?.openParameters();
         setLiveMessage("Parameters opened");
       } else if (e.key === "[" || e.key === "]") {
-        if (!currentCompletion) return;
+        if (!currentCompletion || activeCompletionMessageId === null) return;
         e.preventDefault();
         const direction = e.key === "]" ? 1 : (-1 as 1 | -1);
         const next = findNextLowConfidenceIndex(
@@ -468,7 +567,9 @@ const Playground = () => {
         );
         if (next !== null) {
           setLastLowIndex(next);
-          const el = document.querySelector(`[data-token-index="${next}"]`);
+          const el = document.querySelector(
+            buildTokenSelector(activeCompletionMessageId, next),
+          );
           el?.scrollIntoView({ behavior: "smooth", block: "center" });
           (el as HTMLElement | null)?.focus?.();
           setLiveMessage(`Jumped to low-confidence token ${next}`);
@@ -477,21 +578,27 @@ const Playground = () => {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [currentCompletion, lastLowIndex]);
-
-  // Track the currently highlighted token index (hover from chart) for DOM-based highlighting
-  const lastHoverRef = useRef<number | null>(null);
+  }, [activeCompletionMessageId, currentCompletion, lastLowIndex]);
 
   const handleChartHover = (tokenIndex: number | null) => {
-    const prev = lastHoverRef.current;
-    if (typeof prev === "number") {
-      const prevEl = document.querySelector(`[data-token-index="${prev}"]`);
-      prevEl?.classList.remove("token-chart-hover");
+    if (activeCompletionMessageId === null) {
+      clearHoveredToken();
+      return;
+    }
+
+    const previousTokenIndex = lastHoverRef.current;
+    if (typeof previousTokenIndex === "number") {
+      const previousElement = document.querySelector(
+        buildTokenSelector(activeCompletionMessageId, previousTokenIndex),
+      );
+      previousElement?.classList.remove("token-chart-hover");
     }
     lastHoverRef.current = tokenIndex;
     if (typeof tokenIndex === "number") {
-      const el = document.querySelector(`[data-token-index="${tokenIndex}"]`);
-      el?.classList.add("token-chart-hover");
+      const tokenElement = document.querySelector(
+        buildTokenSelector(activeCompletionMessageId, tokenIndex),
+      );
+      tokenElement?.classList.add("token-chart-hover");
     }
   };
 
@@ -503,16 +610,19 @@ const Playground = () => {
         settings={settings}
         resolvedBaseUrl={resolvedBaseUrl}
         onSave={(nextSettings) => {
+          abortActiveStream(true);
+          resetAnalysisState();
           saveSettings(nextSettings);
           toast("Connection settings saved", {
             description: "Refreshing provider models.",
           });
         }}
         onClear={() => {
+          abortActiveStream(true);
           clearSettings();
           setSelectedModelId(null);
-          setCurrentCompletion(null);
           setMessages([]);
+          resetAnalysisState();
           toast("Connection settings cleared");
         }}
       />
@@ -563,25 +673,26 @@ const Playground = () => {
       <main className="workspace-main">
         {/* Chat transcript */}
         <div className="transcript-panel">
-          {blockState ? (
+          {blockState ?? capabilityNotice ? (
             <div className="px-6 pt-4">
               <Alert
                 variant={
-                  blockState.kind === "unsupported-model" ||
-                  blockState.kind === "unknown-capability" ||
-                  blockState.kind === "model-error"
+                  blockState?.kind === "unsupported-model" ||
+                  blockState?.kind === "model-error"
                     ? "destructive"
                     : "default"
                 }
               >
-                {blockState.kind === "checking-capability" ||
-                blockState.kind === "loading-models" ? (
+                {blockState?.kind === "checking-capability" ||
+                blockState?.kind === "loading-models" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <AlertCircle className="h-4 w-4" />
                 )}
-                <AlertTitle>{blockState.title}</AlertTitle>
-                <AlertDescription>{blockState.description}</AlertDescription>
+                <AlertTitle>{(blockState ?? capabilityNotice)?.title}</AlertTitle>
+                <AlertDescription>
+                  {(blockState ?? capabilityNotice)?.description}
+                </AlertDescription>
               </Alert>
             </div>
           ) : null}
@@ -589,7 +700,7 @@ const Playground = () => {
             messages={messages}
             isLoading={isLoading}
             onTokenClick={handleBranch}
-            currentCompletion={currentCompletion}
+            activeCompletionMessageId={activeCompletionMessageId}
             showWhitespaceOverlays={showWhitespaceOverlays}
             showPunctuationOverlays={showPunctuationOverlays}
           />
@@ -627,8 +738,9 @@ const Playground = () => {
                 setShowPunctuationOverlays(patch.showPunctuation);
             }}
             onClearHistory={() => {
+              abortActiveStream(true);
               setMessages([]);
-              setCurrentCompletion(null);
+              resetAnalysisState();
               setLiveMessage("History cleared");
               composerRef.current?.focus();
             }}
@@ -640,9 +752,9 @@ const Playground = () => {
           completion={deferredCompletion}
           isLoadingChart={isChartPending}
           onTokenClick={(tokenIndex) => {
-            // Scroll to token and highlight
+            if (activeCompletionMessageId === null) return;
             const tokenElement = document.querySelector(
-              `[data-token-index="${tokenIndex}"]`,
+              buildTokenSelector(activeCompletionMessageId, tokenIndex),
             );
             tokenElement?.scrollIntoView({
               behavior: "smooth",

@@ -5,13 +5,13 @@ import type { StickToBottomInstance } from "use-stick-to-bottom";
 import { TokenText } from "./TokenText";
 
 import { calculateQuantiles } from "@/lib/utils";
-import type { ChatMessage, CompletionLP } from "@/types/logprob";
+import type { ChatMessage } from "@/types/logprob";
 
 interface ChatTranscriptProps {
   messages: ChatMessage[];
   isLoading: boolean;
   onTokenClick: (tokenIndex: number, newToken: string) => void;
-  currentCompletion: CompletionLP | null;
+  activeCompletionMessageId: string | null;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
 }
@@ -21,6 +21,8 @@ type ScrollContainerRef = StickToBottomInstance["scrollRef"];
 interface AssistantTokensProps {
   readonly tokens: NonNullable<ChatMessage["tokens"]>;
   readonly onTokenClick: (tokenIndex: number, newToken: string) => void;
+  readonly tokenScopeId: string;
+  readonly isInteractive: boolean;
   readonly showWhitespaceOverlays: boolean;
   readonly showPunctuationOverlays: boolean;
   readonly scrollContainerRef: ScrollContainerRef;
@@ -29,6 +31,8 @@ interface AssistantTokensProps {
 const AssistantTokens = ({
   tokens,
   onTokenClick,
+  tokenScopeId,
+  isInteractive,
   showWhitespaceOverlays,
   showPunctuationOverlays,
   scrollContainerRef,
@@ -39,6 +43,8 @@ const AssistantTokens = ({
     <TokenText
       tokens={tokens}
       onTokenClick={onTokenClick}
+      tokenScopeId={tokenScopeId}
+      isInteractive={isInteractive}
       showWhitespaceOverlays={showWhitespaceOverlays}
       showPunctuationOverlays={showPunctuationOverlays}
       scrollContainerRef={scrollContainerRef}
@@ -54,7 +60,7 @@ export const ChatTranscript = ({
   messages,
   isLoading,
   onTokenClick,
-  currentCompletion: _currentCompletion,
+  activeCompletionMessageId,
   showWhitespaceOverlays = false,
   showPunctuationOverlays = false,
 }: ChatTranscriptProps) => {
@@ -79,8 +85,8 @@ export const ChatTranscript = ({
           </div>
         )}
 
-        {messages.map((message, index) => (
-          <div key={index} className="flex">
+        {messages.map((message) => (
+          <div key={message.id} className="flex">
             {message.role === "user" ? (
               <div className="chat-bubble-user">
                 <p className="text-sm font-medium text-secondary-foreground mb-1">You</p>
@@ -93,6 +99,8 @@ export const ChatTranscript = ({
                   <AssistantTokens
                     tokens={message.tokens}
                     onTokenClick={onTokenClick}
+                    tokenScopeId={message.id}
+                    isInteractive={message.id === activeCompletionMessageId}
                     showWhitespaceOverlays={showWhitespaceOverlays}
                     showPunctuationOverlays={showPunctuationOverlays}
                     scrollContainerRef={scrollRef}

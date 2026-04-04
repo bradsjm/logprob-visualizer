@@ -8,7 +8,7 @@ export type ModelCapabilityStatus =
   | "checking"
   | "supported"
   | "unsupported"
-  | "unknown";
+  | "unknown-transient";
 
 export interface ModelCapability {
   status: ModelCapabilityStatus;
