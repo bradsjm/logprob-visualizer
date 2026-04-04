@@ -12,8 +12,6 @@ export interface CompleteParams {
   readonly frequency_penalty: number;
   readonly max_completion_tokens: number; // 1–256
   readonly top_logprobs: number; // 1–10
-  readonly force_prefix?: string;
-  readonly continuation_mode?: "assistant-prefix" | "hint";
 }
 
 export interface StreamDoneEvent {

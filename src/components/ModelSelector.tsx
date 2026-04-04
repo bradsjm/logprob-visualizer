@@ -11,10 +11,12 @@ import type { ModelInfo } from "@/types/logprob";
 
 interface ModelSelectorProps {
   readonly models: readonly ModelInfo[];
-  readonly selectedModel: ModelInfo;
-  readonly onModelChange: (model: ModelInfo) => void;
+  readonly selectedModelId: string | null;
+  readonly onModelChange: (modelId: string) => void;
   readonly temperature: number;
   readonly onTemperatureChange: (value: number) => void;
+  readonly disabled?: boolean;
+  readonly isLoading?: boolean;
 }
 
 /**
@@ -22,24 +24,24 @@ interface ModelSelectorProps {
  */
 export const ModelSelector = ({
   models,
-  selectedModel,
+  selectedModelId,
   onModelChange,
   temperature,
   onTemperatureChange,
+  disabled = false,
+  isLoading = false,
 }: ModelSelectorProps) => {
   return (
     <div className="flex items-center gap-4">
       <Select
-        value={selectedModel.id}
-        onValueChange={(modelId) => {
-          const model = models.find((m) => m.id === modelId);
-          if (model) {
-            onModelChange(model);
-          }
-        }}
+        disabled={disabled || isLoading || models.length === 0}
+        value={selectedModelId ?? undefined}
+        onValueChange={onModelChange}
       >
         <SelectTrigger className="w-40">
-          <SelectValue />
+          <SelectValue
+            placeholder={isLoading ? "Loading models..." : "Select a model"}
+          />
         </SelectTrigger>
         <SelectContent>
           {models.map((model) => (
@@ -67,6 +69,7 @@ export const ModelSelector = ({
             max={2}
             step={0.1}
             value={[temperature]}
+            disabled={disabled}
             onValueChange={([v]) => onTemperatureChange(v)}
           />
         </div>

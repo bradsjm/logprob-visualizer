@@ -1,186 +1,32 @@
+import { AlertCircle, KeyRound, Loader2 } from "lucide-react";
 import {
   useEffect,
   useMemo,
   useRef,
   useState,
-  useTransition,
   useDeferredValue,
+  useTransition,
 } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { ChatTranscript } from "@/components/ChatTranscript";
 import { Composer, type ComposerHandle } from "@/components/Composer";
+import { ConnectionSettingsDialog } from "@/components/ConnectionSettingsDialog";
 import { ModelSelector } from "@/components/ModelSelector";
 import { ParameterBadges } from "@/components/ParameterBadges";
 import { PresetChips } from "@/components/PresetChips";
-import { toast } from "@/components/ui/sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { useConnectionSettings } from "@/hooks/useConnectionSettings";
+import { useModelCapability } from "@/hooks/useModelCapability";
 import { useModels } from "@/hooks/useModels";
-import { transport } from "@/lib/transport";
+import { createTransport } from "@/lib/transport";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
-import type { CompletionLP, ModelInfo, RunParameters, ChatMessage } from "@/types/logprob";
+import type { ChatMessage, CompletionLP, RunParameters } from "@/types/logprob";
 import type { Stream, StreamEvent } from "@/types/transport";
-
-// Helper to build a consistent mock completion used for seeding and demo runs
-const buildMockCompletion = (modelId: string): CompletionLP => ({
-  text: "The Burj Khalifa in Dubai is currently the world's tallest building, measuring 828 meters (2,717 feet) in height.",
-  tokens: [
-    {
-      index: 0,
-      token: "The",
-      logprob: -0.5,
-      prob: 0.6065,
-      top_logprobs: [
-        { token: "The", logprob: -0.5, prob: 0.6065 },
-        { token: "A", logprob: -1.2, prob: 0.3012 },
-        { token: "Currently", logprob: -2.1, prob: 0.1224 },
-      ],
-    },
-    {
-      index: 1,
-      token: " Burj",
-      logprob: -0.1,
-      prob: 0.9048,
-      top_logprobs: [
-        { token: " Burj", logprob: -0.1, prob: 0.9048 },
-        { token: " tallest", logprob: -2.5, prob: 0.0821 },
-      ],
-    },
-    {
-      index: 2,
-      token: " Khalifa",
-      logprob: -0.05,
-      prob: 0.9512,
-      top_logprobs: [{ token: " Khalifa", logprob: -0.05, prob: 0.9512 }],
-    },
-    {
-      index: 3,
-      token: " in",
-      logprob: -0.3,
-      prob: 0.7408,
-      top_logprobs: [
-        { token: " in", logprob: -0.3, prob: 0.7408 },
-        { token: " is", logprob: -1.1, prob: 0.3329 },
-      ],
-    },
-    {
-      index: 4,
-      token: " Dubai",
-      logprob: -0.2,
-      prob: 0.8187,
-      top_logprobs: [
-        { token: " Dubai", logprob: -0.2, prob: 0.8187 },
-        { token: " UAE", logprob: -1.8, prob: 0.1653 },
-      ],
-    },
-    {
-      index: 5,
-      token: " is",
-      logprob: -0.4,
-      prob: 0.6703,
-      top_logprobs: [
-        { token: " is", logprob: -0.4, prob: 0.6703 },
-        { token: " stands", logprob: -0.9, prob: 0.4066 },
-      ],
-    },
-    {
-      index: 6,
-      token: " currently",
-      logprob: -0.8,
-      prob: 0.4493,
-      top_logprobs: [
-        { token: " currently", logprob: -0.8, prob: 0.4493 },
-        { token: " the", logprob: -1.0, prob: 0.3679 },
-      ],
-    },
-    {
-      index: 7,
-      token: " the",
-      logprob: -0.3,
-      prob: 0.7408,
-      top_logprobs: [{ token: " the", logprob: -0.3, prob: 0.7408 }],
-    },
-    {
-      index: 8,
-      token: " world",
-      logprob: -0.2,
-      prob: 0.8187,
-      top_logprobs: [{ token: " world", logprob: -0.2, prob: 0.8187 }],
-    },
-    {
-      index: 9,
-      token: "'s",
-      logprob: -0.1,
-      prob: 0.9048,
-      top_logprobs: [{ token: "'s", logprob: -0.1, prob: 0.9048 }],
-    },
-    {
-      index: 10,
-      token: " tallest",
-      logprob: -0.15,
-      prob: 0.8607,
-      top_logprobs: [
-        { token: " tallest", logprob: -0.15, prob: 0.8607 },
-        { token: " largest", logprob: -2.2, prob: 0.1108 },
-      ],
-    },
-    {
-      index: 11,
-      token: " building",
-      logprob: -0.1,
-      prob: 0.9048,
-      top_logprobs: [
-        { token: " building", logprob: -0.1, prob: 0.9048 },
-        { token: " structure", logprob: -2.5, prob: 0.0821 },
-      ],
-    },
-    {
-      index: 12,
-      token: ",",
-      logprob: -0.5,
-      prob: 0.6065,
-      top_logprobs: [
-        { token: ",", logprob: -0.5, prob: 0.6065 },
-        { token: " in", logprob: -1.2, prob: 0.3012 },
-      ],
-    },
-    {
-      index: 13,
-      token: " measuring",
-      logprob: -0.88,
-      prob: 0.4141,
-      top_logprobs: [
-        { token: " measuring", logprob: -0.88, prob: 0.4141 },
-        { token: " standing", logprob: -1.15, prob: 0.318 },
-        { token: " with", logprob: -2.45, prob: 0.0862 },
-        { token: " reaching", logprob: -2.51, prob: 0.0813 },
-        { token: " at", logprob: -2.66, prob: 0.0701 },
-      ],
-    },
-    {
-      index: 14,
-      token: " 828",
-      logprob: -0.3,
-      prob: 0.7408,
-      top_logprobs: [{ token: " 828", logprob: -0.3, prob: 0.7408 }],
-    },
-    {
-      index: 15,
-      token: " meters",
-      logprob: -0.4,
-      prob: 0.6703,
-      top_logprobs: [
-        { token: " meters", logprob: -0.4, prob: 0.6703 },
-        { token: " m", logprob: -1.1, prob: 0.3329 },
-      ],
-    },
-  ],
-  finish_reason: "stop",
-  usage: { prompt_tokens: 12, completion_tokens: 16, total_tokens: 28 },
-  model: modelId,
-  latency: 1240,
-});
 
 const clamp = (v: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, v));
@@ -198,22 +44,32 @@ const DEFAULT_PARAMS: Readonly<RunParameters> = Object.freeze({
  * Main playground view combining chat, analysis, and parameter controls for logprob exploration.
  */
 const Playground = () => {
-  const { models } = useModels();
+  const {
+    settings,
+    resolvedBaseUrl,
+    hasSavedSettings,
+    saveSettings,
+    clearSettings,
+  } = useConnectionSettings();
+  const { models, isLoading: isModelsLoading, isError: isModelsError, errorMessage } =
+    useModels(settings, resolvedBaseUrl);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Read initial state from URL (idempotent on first render)
-  const initialModelId = searchParams.get("model") ?? "gpt-4o";
-  const [selectedModel, setSelectedModel] = useState<ModelInfo>({
-    id: initialModelId,
-    name: initialModelId,
-  });
-  const seed = buildMockCompletion(selectedModel.id);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: seed.text, tokens: seed.tokens as TokenLP[] },
-  ]);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(
+    () => searchParams.get("model"),
+  );
+  const selectedModel =
+    models.find((model) => model.id === selectedModelId) ?? null;
+  const capability = useModelCapability(settings, selectedModel?.id ?? null);
+  const transport = useMemo(
+    () => createTransport(settings),
+    [settings],
+  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Branching UI removed; no branch context state
   const [currentCompletion, setCurrentCompletion] =
-    useState<CompletionLP | null>(seed);
+    useState<CompletionLP | null>(null);
   const initialParams: RunParameters = useMemo(() => {
     const n = (
       key: keyof RunParameters,
@@ -280,21 +136,36 @@ const Playground = () => {
 
   // Reconcile selected model object once models list arrives
   useEffect(() => {
-    if (!models.length) return;
-    const match = models.find((m) => m.id === selectedModel.id);
-    if (match) {
-      if (match.name !== selectedModel.name) setSelectedModel(match);
-    } else {
-      setSelectedModel(models[0]!);
-      toast("Model updated", { description: `Selected ${models[0]!.name}` });
+    if (!hasSavedSettings || models.length === 0) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [models]);
+
+    const hasSelectedModel = selectedModelId
+      ? models.some((model) => model.id === selectedModelId)
+      : false;
+    if (hasSelectedModel) {
+      return;
+    }
+
+    const nextModel = models[0] ?? null;
+    if (!nextModel) {
+      setSelectedModelId(null);
+      return;
+    }
+
+    setSelectedModelId(nextModel.id);
+    if (selectedModelId) {
+      toast("Model updated", {
+        description: `Selected ${nextModel.name}`,
+      });
+    }
+  }, [hasSavedSettings, models, selectedModelId]);
 
   // Keep URL in sync with current selection/parameters
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
-    next.set("model", selectedModel.id);
+    if (selectedModelId) next.set("model", selectedModelId);
+    else next.delete("model");
     next.set("temperature", runParameters.temperature.toFixed(2));
     next.set("top_p", runParameters.top_p.toFixed(2));
     next.set(
@@ -304,11 +175,118 @@ const Playground = () => {
     next.set("top_logprobs", String(runParameters.top_logprobs));
     next.set("presence_penalty", runParameters.presence_penalty.toFixed(2));
     next.set("frequency_penalty", runParameters.frequency_penalty.toFixed(2));
-    setSearchParams(next, { replace: true });
-  }, [selectedModel.id, runParameters, searchParams, setSearchParams]);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [runParameters, searchParams, selectedModelId, setSearchParams]);
+
+  const lastCapabilityToastRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedModel || capability.status !== "unsupported") {
+      return;
+    }
+
+    const nextKey = `${resolvedBaseUrl}:${selectedModel.id}`;
+    if (lastCapabilityToastRef.current === nextKey) {
+      return;
+    }
+
+    lastCapabilityToastRef.current = nextKey;
+    toast("Selected model is incompatible", {
+      description:
+        capability.message ??
+        "This model does not return logprobs and cannot be used here.",
+    });
+  }, [capability.message, capability.status, resolvedBaseUrl, selectedModel]);
+
+  const blockState = useMemo(() => {
+    if (!hasSavedSettings) {
+      return {
+        title: "Connection settings required",
+        description:
+          "Add an API key before loading models or generating completions.",
+        kind: "missing-settings" as const,
+      };
+    }
+
+    if (isModelsLoading) {
+      return {
+        title: "Loading models",
+        description: "Fetching models from the configured provider.",
+        kind: "loading-models" as const,
+      };
+    }
+
+    if (isModelsError) {
+      return {
+        title: "Model discovery failed",
+        description:
+          errorMessage ??
+          "The provider did not return a usable models response.",
+        kind: "model-error" as const,
+      };
+    }
+
+    if (!selectedModel) {
+      return {
+        title: "No model selected",
+        description: "Choose a provider model before sending a prompt.",
+        kind: "missing-model" as const,
+      };
+    }
+
+    if (capability.status === "checking") {
+      return {
+        title: "Checking logprobs support",
+        description: "Verifying that the selected model supports logprobs.",
+        kind: "checking-capability" as const,
+      };
+    }
+
+    if (capability.status === "unsupported") {
+      return {
+        title: "Selected model does not support logprobs",
+        description:
+          capability.message ??
+          "Choose a different model. This app requires logprobs for analysis.",
+        kind: "unsupported-model" as const,
+      };
+    }
+
+    if (capability.status === "unknown") {
+      return {
+        title: "Unable to verify model capability",
+        description:
+          capability.message ??
+          "Capability probing failed, so generation remains blocked.",
+        kind: "unknown-capability" as const,
+      };
+    }
+
+    return null;
+  }, [
+    capability.message,
+    capability.status,
+    errorMessage,
+    hasSavedSettings,
+    isModelsError,
+    isModelsLoading,
+    selectedModel,
+  ]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
+    if (!selectedModel || blockState) {
+      if (blockState?.kind === "missing-settings") {
+        setIsSettingsOpen(true);
+      }
+      toast("Cannot send request", {
+        description:
+          blockState?.description ??
+          "Select a compatible model before sending a request.",
+      });
+      return;
+    }
 
     const userMessage = { role: "user" as const, content };
     const newMessages = [...messages, userMessage];
@@ -519,6 +497,25 @@ const Playground = () => {
 
   return (
     <div className="workspace-container">
+      <ConnectionSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        settings={settings}
+        resolvedBaseUrl={resolvedBaseUrl}
+        onSave={(nextSettings) => {
+          saveSettings(nextSettings);
+          toast("Connection settings saved", {
+            description: "Refreshing provider models.",
+          });
+        }}
+        onClear={() => {
+          clearSettings();
+          setSelectedModelId(null);
+          setCurrentCompletion(null);
+          setMessages([]);
+          toast("Connection settings cleared");
+        }}
+      />
       {/* Live region for a11y announcements */}
       <div aria-live="polite" className="sr-only" role="status">
         {liveMessage}
@@ -531,11 +528,11 @@ const Playground = () => {
           </h1>
           <ModelSelector
             models={models}
-            selectedModel={selectedModel}
-            onModelChange={(model) => {
-              setSelectedModel(model);
-            }}
+            selectedModelId={selectedModelId}
+            onModelChange={setSelectedModelId}
             temperature={runParameters.temperature}
+            disabled={!hasSavedSettings}
+            isLoading={isModelsLoading}
             onTemperatureChange={(value) =>
               setRunParameters((prev) => ({
                 ...prev,
@@ -550,6 +547,14 @@ const Playground = () => {
           />
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            variant={hasSavedSettings ? "outline" : "default"}
+          >
+            <KeyRound className="mr-2 h-4 w-4" />
+            {hasSavedSettings ? "Connection Settings" : "Set API Key"}
+          </Button>
           <ParameterBadges parameters={runParameters} />
         </div>
       </header>
@@ -558,6 +563,28 @@ const Playground = () => {
       <main className="workspace-main">
         {/* Chat transcript */}
         <div className="transcript-panel">
+          {blockState ? (
+            <div className="px-6 pt-4">
+              <Alert
+                variant={
+                  blockState.kind === "unsupported-model" ||
+                  blockState.kind === "unknown-capability" ||
+                  blockState.kind === "model-error"
+                    ? "destructive"
+                    : "default"
+                }
+              >
+                {blockState.kind === "checking-capability" ||
+                blockState.kind === "loading-models" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertTitle>{blockState.title}</AlertTitle>
+                <AlertDescription>{blockState.description}</AlertDescription>
+              </Alert>
+            </div>
+          ) : null}
           <ChatTranscript
             messages={messages}
             isLoading={isLoading}
@@ -571,6 +598,18 @@ const Playground = () => {
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
             isStreaming={activeStream !== null}
+            canSubmit={blockState === null}
+            blockedSendMessage={blockState?.description ?? null}
+            onBlockedSend={() => {
+              if (blockState?.kind === "missing-settings") {
+                setIsSettingsOpen(true);
+              }
+              if (blockState) {
+                toast("Cannot send request", {
+                  description: blockState.description,
+                });
+              }
+            }}
             onCancel={() => {
               if (activeStream) {
                 cancelRequestedRef.current = true;

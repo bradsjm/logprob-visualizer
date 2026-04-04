@@ -10,6 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { LogprobChart } from "./LogprobChart";
 
@@ -20,7 +21,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { toast } from "@/components/ui/sonner";
 import type { CompletionLP } from "@/types/logprob";
 // (legend colors are applied within child components/tooltips)
 

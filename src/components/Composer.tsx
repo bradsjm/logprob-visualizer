@@ -24,6 +24,9 @@ interface ComposerProps {
   isLoading: boolean;
   isStreaming?: boolean;
   onCancel?: () => void;
+  canSubmit?: boolean;
+  onBlockedSend?: () => void;
+  blockedSendMessage?: string | null;
   parameters: RunParameters;
   onParametersChange: (params: RunParameters) => void;
   showWhitespaceOverlays?: boolean;
@@ -54,6 +57,9 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       isLoading,
       isStreaming = false,
       onCancel,
+      canSubmit = true,
+      onBlockedSend,
+      blockedSendMessage,
       parameters,
       onParametersChange,
       showWhitespaceOverlays = false,
@@ -90,6 +96,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
 
     const submitMessage = () => {
       if (!message.trim() || isLoading) return;
+      if (!canSubmit) {
+        onBlockedSend?.();
+        return;
+      }
       onSendMessage(message);
       setMessage("");
     };
@@ -163,7 +173,11 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                     )}
                   </TooltipTrigger>
                   <TooltipContent>
-                    {isStreaming ? "Cancel" : "Send (Cmd/Ctrl+Enter)"}
+                    {isStreaming
+                      ? "Cancel"
+                      : canSubmit
+                        ? "Send (Cmd/Ctrl+Enter)"
+                        : blockedSendMessage ?? "Sending is currently blocked"}
                   </TooltipContent>
                 </Tooltip>
 

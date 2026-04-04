@@ -1,5 +1,17 @@
-import { API_BASE } from "@/lib/api/client";
-import type { CompleteParams, Stream, StreamEvent, Transport } from "@/types/transport";
+import { normalizeConnectionSettings, resolveBaseUrl } from "@/lib/connection";
+import {
+  buildCompletionFromState,
+  consumeStreamChunk,
+  parseOpenAIStream,
+  readErrorDetail,
+} from "@/lib/openai";
+import type { ConnectionSettings } from "@/types/connection";
+import type {
+  CompleteParams,
+  Stream,
+  StreamEvent,
+  Transport,
+} from "@/types/transport";
 
 function buildBody(params: Readonly<CompleteParams>): CompleteParams {
   return {
@@ -9,54 +21,102 @@ function buildBody(params: Readonly<CompleteParams>): CompleteParams {
   } satisfies CompleteParams;
 }
 
-async function* parseNdjson(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-): AsyncGenerator<StreamEvent, void, unknown> {
-  const decoder = new TextDecoder();
-  let buf = "";
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buf.indexOf("\n")) !== -1) {
-      const line = buf.slice(0, idx).trim();
-      buf = buf.slice(idx + 1);
-      if (!line) continue;
-      try {
-        const evt = JSON.parse(line) as StreamEvent;
-        if (evt && (evt as StreamEvent).type) {
-          yield evt;
-        }
-      } catch {
-        // ignore malformed lines
-      }
-    }
-  }
-}
-
 /**
- * Implements the transport contract using the NDJSON streaming completion endpoint.
+ * Implements the transport contract using direct browser streaming from a provider.
  */
 export class StreamTransport implements Transport {
+  constructor(private readonly settings: Readonly<ConnectionSettings>) {}
+
   complete(params: Readonly<CompleteParams>): Stream<StreamEvent> {
     const controller = new AbortController();
-    const body = JSON.stringify(buildBody(params));
+    const normalizedSettings = normalizeConnectionSettings(this.settings);
+    const body = JSON.stringify({
+      ...buildBody(params),
+      logprobs: true,
+      stream: true,
+    });
+
     const execute = async function* () {
-      const res = await fetch(`${API_BASE}/complete/stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-        signal: controller.signal,
-      });
+      const startedAt = Date.now();
+      const res = await fetch(
+        `${resolveBaseUrl(normalizedSettings.baseUrl)}/chat/completions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${normalizedSettings.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body,
+          signal: controller.signal,
+        },
+      );
+
       if (!res.ok || !res.body) {
-        const detail = await res.text().catch(() => "");
-        yield { type: "done", error: `HTTP ${res.status}: ${res.statusText}${detail ? ` - ${detail}` : ""}` } as const;
+        const detail = await readErrorDetail(res);
+        yield {
+          type: "done",
+          error: detail,
+        } as const;
         return;
       }
-      const reader = res.body.getReader();
-      for await (const evt of parseNdjson(reader)) {
-        yield evt;
+
+      const state = {
+        aggregatedText: "",
+        tokens: [],
+        finishReason: "stop",
+        usage: null,
+        model: params.model,
+      };
+
+      try {
+        for await (const data of parseOpenAIStream(res.body.getReader())) {
+          if (data === "[DONE]") {
+            break;
+          }
+
+          let chunk: unknown;
+          try {
+            chunk = JSON.parse(data);
+          } catch {
+            continue;
+          }
+
+          const { deltaText, tokenEvents } = consumeStreamChunk(
+            params,
+            startedAt,
+            state,
+            chunk as {
+              model?: unknown;
+              usage?: unknown;
+              choices?: Array<{
+                delta?: { content?: unknown };
+                logprobs?: { content?: unknown };
+                finish_reason?: unknown;
+              }>;
+            },
+          );
+
+          if (deltaText) {
+            yield { type: "delta", delta: deltaText } as const;
+          }
+
+          for (const tokenEvent of tokenEvents) {
+            yield { type: "logprobs", delta: tokenEvent } as const;
+          }
+        }
+
+        yield {
+          type: "done",
+          completion: buildCompletionFromState(params, startedAt, state),
+        } as const;
+      } catch (error) {
+        if ((error as DOMException).name === "AbortError") {
+          throw error;
+        }
+        yield {
+          type: "done",
+          error: (error as Error).message,
+        } as const;
       }
     };
 

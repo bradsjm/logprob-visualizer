@@ -2,12 +2,12 @@ import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerClose,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -44,16 +44,16 @@ export const ParametersDrawer = ({
   };
 
   return (
-    <Drawer
+    <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DrawerContent className="bg-background">
-        <DrawerHeader className="relative">
-          <DrawerTitle>Generation Parameters</DrawerTitle>
-          <DrawerClose asChild>
+      <DialogContent className="max-w-3xl bg-background">
+        <DialogHeader className="relative">
+          <DialogTitle>Generation Parameters</DialogTitle>
+          <DialogClose asChild>
             <Button
               variant="ghost"
               size="icon"
@@ -62,8 +62,8 @@ export const ParametersDrawer = ({
             >
               <X className="h-4 w-4" />
             </Button>
-          </DrawerClose>
-        </DrawerHeader>
+          </DialogClose>
+        </DialogHeader>
 
         <div className="px-6 pb-4 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -238,7 +238,7 @@ export const ParametersDrawer = ({
             </div>
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 };

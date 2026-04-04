@@ -1,23 +1,11 @@
-/* eslint-disable import/order */
-import { useMemo } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  ReferenceArea,
-} from "recharts";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { TokenLP } from "@/types/logprob";
 import {
   calculateQuantiles,
   getTokenColorClass,
   tokenColorToTextClass,
 } from "@/lib/utils";
+import type { TokenLP } from "@/types/logprob";
 
 interface LogprobChartProps {
   readonly tokens: readonly TokenLP[];
@@ -25,238 +13,249 @@ interface LogprobChartProps {
   readonly onTokenHover?: (tokenIndex: number | null) => void;
 }
 
-type ActivePayload = {
-  payload: {
-    index: number;
-    logprob: number;
-    prob: number;
-    token: string;
-    fullToken: string;
-  };
-};
-type ChartClickEvent = { activePayload?: ActivePayload[] };
+interface ChartPoint {
+  index: number;
+  x: number;
+  y: number;
+  prob: number;
+  logprob: number;
+  token: string;
+}
 
-/**
- * Renders the token probability bar chart with interactive focus and streaming states.
- */
-export const LogprobChart = ({
+const CHART_HEIGHT = 256;
+const CHART_WIDTH = 720;
+const MARGIN = { top: 16, right: 24, bottom: 28, left: 44 };
+
+function colorForToken(logprob: number, min: number, max: number): string {
+  switch (getTokenColorClass(logprob, min, max)) {
+    case "token-low-prob":
+      return "hsl(var(--token-low))";
+    case "token-med-low-prob":
+      return "hsl(var(--token-med-low))";
+    case "token-med-high-prob":
+      return "hsl(var(--token-med-high))";
+    case "token-high-prob":
+      return "hsl(var(--token-high))";
+  }
+}
+
+function useMeasuredWidth<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [width, setWidth] = useState(CHART_WIDTH);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const nextWidth = entries[0]?.contentRect.width;
+      if (typeof nextWidth === "number" && nextWidth > 0) {
+        setWidth(nextWidth);
+      }
+    });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, width };
+}
+
+export function LogprobChart({
   tokens,
   onTokenClick,
   onTokenHover,
-}: LogprobChartProps) => {
-  const data = tokens.map((token, index) => ({
-    index,
-    logprob: token.logprob,
-    prob: token.prob,
-    token:
-      token.token.length > 10 ? token.token.slice(0, 10) + "..." : token.token,
-    fullToken: token.token,
-  }));
+}: LogprobChartProps) {
+  const { ref, width } = useMeasuredWidth<HTMLDivElement>();
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { min, max } = useMemo(() => calculateQuantiles(tokens), [tokens]);
 
-  const handlePointClick = (evt: unknown) => {
-    const maybe = evt as ChartClickEvent;
-    if (maybe && Array.isArray(maybe.activePayload) && maybe.activePayload[0]) {
-      const tokenIndex = maybe.activePayload[0].payload.index;
-      onTokenClick(tokenIndex);
-    }
-  };
+  const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 1);
+  const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+  const denominator = Math.max(tokens.length - 1, 1);
 
-  type TooltipPayloadItem = ActivePayload;
-  type CustomTooltipProps = {
-    active?: boolean;
-    payload?: TooltipPayloadItem[];
-    label?: number | string;
-  };
+  const points = useMemo<ChartPoint[]>(
+    () =>
+      tokens.map((token, index) => ({
+        index,
+        x: MARGIN.left + (plotWidth * index) / denominator,
+        y: MARGIN.top + (1 - token.prob) * plotHeight,
+        prob: token.prob,
+        logprob: token.logprob,
+        token: token.token,
+      })),
+    [tokens, plotHeight, plotWidth, denominator],
+  );
 
-  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      const tClass = tokenColorToTextClass(
-        getTokenColorClass(data.logprob, min, max),
-      );
-      return (
-        <div className="bg-popover border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">Token #{label}</p>
+  const hoveredPoint =
+    hoveredIndex === null ? null : points.find((point) => point.index === hoveredIndex) ?? null;
+
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+
+  const bands = [
+    { start: 0, end: 0.25, fill: "hsl(var(--token-low) / 0.12)" },
+    { start: 0.25, end: 0.5, fill: "hsl(var(--token-med-low) / 0.12)" },
+    { start: 0.5, end: 0.75, fill: "hsl(var(--token-med-high) / 0.12)" },
+    { start: 0.75, end: 1, fill: "hsl(var(--token-high) / 0.12)" },
+  ];
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1];
+
+  return (
+    <div ref={ref} className="relative h-64 w-full">
+      <svg
+        className="h-full w-full"
+        viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
+        role="img"
+        aria-label="Token probability chart"
+        onMouseLeave={() => {
+          setHoveredIndex(null);
+          onTokenHover?.(null);
+        }}
+      >
+        {bands.map((band) => {
+          const top = MARGIN.top + (1 - band.end) * plotHeight;
+          const height = (band.end - band.start) * plotHeight;
+          return (
+            <rect
+              key={`${band.start}-${band.end}`}
+              x={MARGIN.left}
+              y={top}
+              width={plotWidth}
+              height={height}
+              fill={band.fill}
+            />
+          );
+        })}
+
+        {yTicks.map((tick) => {
+          const y = MARGIN.top + (1 - tick) * plotHeight;
+          return (
+            <g key={tick}>
+              <line
+                x1={MARGIN.left}
+                x2={MARGIN.left + plotWidth}
+                y1={y}
+                y2={y}
+                stroke="hsl(var(--border))"
+                strokeDasharray={tick === 0.5 ? "4 4" : "3 3"}
+                strokeOpacity={tick === 0.5 ? 1 : 0.4}
+              />
+              <text
+                x={MARGIN.left - 8}
+                y={y + 4}
+                fontSize="12"
+                textAnchor="end"
+                fill="hsl(var(--muted-foreground))"
+              >
+                {Math.round(tick * 100)}%
+              </text>
+            </g>
+          );
+        })}
+
+        <line
+          x1={MARGIN.left}
+          x2={MARGIN.left}
+          y1={MARGIN.top}
+          y2={MARGIN.top + plotHeight}
+          stroke="hsl(var(--border))"
+        />
+        <line
+          x1={MARGIN.left}
+          x2={MARGIN.left + plotWidth}
+          y1={MARGIN.top + plotHeight}
+          y2={MARGIN.top + plotHeight}
+          stroke="hsl(var(--border))"
+        />
+
+        {points.length > 1 ? (
+          <path
+            d={linePath}
+            fill="none"
+            stroke="hsl(var(--accent))"
+            strokeWidth="2"
+          />
+        ) : null}
+
+        {points.map((point) => {
+          const color = colorForToken(point.logprob, min, max);
+          return (
+            <circle
+              key={point.index}
+              cx={point.x}
+              cy={point.y}
+              r={hoveredIndex === point.index ? 6 : 4}
+              fill={color}
+              stroke={color}
+              className="cursor-pointer"
+              onClick={() => onTokenClick(point.index)}
+              onMouseEnter={() => {
+                setHoveredIndex(point.index);
+                onTokenHover?.(point.index);
+              }}
+            />
+          );
+        })}
+
+        <text
+          x={MARGIN.left + plotWidth / 2}
+          y={CHART_HEIGHT - 4}
+          fontSize="12"
+          textAnchor="middle"
+          fill="hsl(var(--muted-foreground))"
+        >
+          Token Index
+        </text>
+        <text
+          x="14"
+          y={MARGIN.top + plotHeight / 2}
+          fontSize="12"
+          textAnchor="middle"
+          transform={`rotate(-90 14 ${MARGIN.top + plotHeight / 2})`}
+          fill="hsl(var(--muted-foreground))"
+        >
+          Probability (%)
+        </text>
+      </svg>
+
+      {hoveredPoint ? (
+        <div
+          className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border bg-popover p-3 shadow-lg"
+          style={{
+            left: hoveredPoint.x,
+            top: Math.max(hoveredPoint.y - 108, 8),
+          }}
+        >
+          <p className="font-medium">Token #{hoveredPoint.index}</p>
           <p className="text-sm">
-            <code className={`bg-muted px-1 rounded text-xs ${tClass}`}>
-              "{data.fullToken}"
+            <code
+              className={`rounded bg-muted px-1 text-xs ${tokenColorToTextClass(
+                getTokenColorClass(hoveredPoint.logprob, min, max),
+              )}`}
+            >
+              "{hoveredPoint.token}"
             </code>
           </p>
           <p className="text-sm text-muted-foreground">
             Probability:{" "}
-            <span className={`font-medium ${tClass}`}>
-              {(data.prob * 100).toFixed(2)}%
+            <span className="font-medium">
+              {(hoveredPoint.prob * 100).toFixed(2)}%
             </span>
           </p>
           <p className="text-sm text-muted-foreground">
             Log probability:{" "}
-            <span className={`font-medium ${tClass}`}>
-              {data.logprob.toFixed(3)}
+            <span className="font-medium">
+              {hoveredPoint.logprob.toFixed(3)}
             </span>
           </p>
-          <p className="text-xs text-muted-foreground pt-1">
+          <p className="pt-1 text-xs text-muted-foreground">
             Click to scroll to token
           </p>
         </div>
-      );
-    }
-    return null;
-  };
-
-  // Draw per-point dots using the token probability palette so dots match the legend.
-  interface LineDotProps {
-    readonly cx?: number;
-    readonly cy?: number;
-    readonly payload?: {
-      readonly index: number;
-      readonly logprob: number;
-      readonly prob: number;
-      readonly token: string;
-      readonly fullToken: string;
-    };
-  }
-
-  const colorForLogprob = (logprob: number): string => {
-    const cls = getTokenColorClass(logprob, min, max);
-    switch (cls) {
-      case "token-low-prob":
-        return "hsl(var(--token-low))";
-      case "token-med-low-prob":
-        return "hsl(var(--token-med-low))";
-      case "token-med-high-prob":
-        return "hsl(var(--token-med-high))";
-      case "token-high-prob":
-        return "hsl(var(--token-high))";
-      default:
-        return "hsl(var(--accent))";
-    }
-  };
-
-  const ColoredDot: React.FC<LineDotProps> = ({ cx, cy, payload }) => {
-    if (typeof cx !== "number" || typeof cy !== "number" || !payload)
-      return null;
-    const color = colorForLogprob(payload.logprob);
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={3}
-        fill={color}
-        stroke={color}
-        strokeWidth={2}
-      />
-    );
-  };
-
-  const ColoredActiveDot: React.FC<LineDotProps> = ({ cx, cy, payload }) => {
-    if (typeof cx !== "number" || typeof cy !== "number" || !payload)
-      return null;
-    const color = colorForLogprob(payload.logprob);
-    // Slightly larger radius for active state to improve visibility
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={6}
-        fill={color}
-        stroke={color}
-        strokeWidth={2}
-      />
-    );
-  };
-
-  return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={data}
-          margin={{ top: 16, right: 24, left: 30, bottom: 26 }}
-          onClick={handlePointClick}
-          onMouseMove={(evt) => {
-            const maybe = evt as ChartClickEvent;
-            const idx = maybe?.activePayload?.[0]?.payload?.index;
-            if (typeof idx === "number") onTokenHover?.(idx);
-          }}
-          onMouseLeave={() => onTokenHover?.(null)}
-        >
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis
-            dataKey="index"
-            type="number"
-            domain={["dataMin", "dataMax"]}
-            tick={{ fontSize: 12 }}
-            tickMargin={6}
-            label={{
-              value: "Token Index",
-              position: "insideBottom",
-              dy: 10,
-              style: { fontSize: 12, fill: "hsl(var(--muted-foreground))" },
-            }}
-          />
-          <YAxis
-            domain={[0, 1]}
-            width={40}
-            tick={{ fontSize: 12 }}
-            tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-            ticks={[0, 0.25, 0.5, 0.75, 1]}
-            label={{
-              value: "Probability (%)",
-              angle: -90,
-              position: "left",
-              offset: 10,
-              style: {
-                fontSize: 12,
-                fill: "hsl(var(--muted-foreground))",
-                textAnchor: "middle",
-              },
-            }}
-          />
-          {/* Probability bands for quick reading */}
-          <ReferenceArea
-            y1={0}
-            y2={0.25}
-            fill="hsl(var(--token-low) / 0.12)"
-            stroke="hsl(var(--token-low))"
-            strokeOpacity={0.18}
-          />
-          <ReferenceArea
-            y1={0.25}
-            y2={0.5}
-            fill="hsl(var(--token-med-low) / 0.12)"
-            stroke="hsl(var(--token-med-low))"
-            strokeOpacity={0.18}
-          />
-          <ReferenceArea
-            y1={0.5}
-            y2={0.75}
-            fill="hsl(var(--token-med-high) / 0.12)"
-            stroke="hsl(var(--token-med-high))"
-            strokeOpacity={0.18}
-          />
-          <ReferenceArea
-            y1={0.75}
-            y2={1}
-            fill="hsl(var(--token-high) / 0.12)"
-            stroke="hsl(var(--token-high))"
-            strokeOpacity={0.18}
-          />
-          <ReferenceLine
-            y={0.5}
-            stroke="hsl(var(--border))"
-            strokeDasharray="4 4"
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="linear"
-            dataKey="prob"
-            stroke="hsl(var(--accent))"
-            strokeWidth={2}
-            dot={<ColoredDot />}
-            activeDot={<ColoredActiveDot />}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      ) : null}
     </div>
   );
-};
+}

@@ -2,14 +2,12 @@
 
 ## Project Structure & Module Organization
 - `src/` hosts the React client. Favor `src/components` for UI primitives, `src/pages` for routed views, `src/hooks` for stateful logic, and `src/lib` for cross-cutting utilities.
-- `server/` runs the Fastify API (`index.ts`) and ships shared model metadata; keep API-only dependencies here.
-- Static assets live in `public/`, bundled output lands in `dist/`, and container scripts stay under `docker/` and `scripts/`.
+- Static assets live in `public/`, and bundled output lands in `dist/`.
 
 ## Build, Test, and Development Commands
-- `npm run dev` launches the Vite dev server; pair with `npm run server` or the combined `npm run dev:all` when you need API + UI.
-- `npm run build` (or `npm run build:dev`) creates production artifacts; validate with `npm run preview` before shipping.
-- `npm run typecheck`, `npm run lint`, `npm run lint:fix`, and `npm run pretty` enforce TypeScript, ESLint, and Prettier baselines.
-- `npm run docker:build` and `npm run docker` package and run the app using `.env.local` for runtime configuration.
+- `pnpm dev` launches the Vite dev server.
+- `pnpm build` (or `pnpm build:dev`) creates production artifacts; validate with `pnpm preview` before shipping.
+- `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm lint:fix`, and `pnpm pretty` enforce TypeScript, ESLint, test, and Prettier baselines.
 
 ## Coding Style & Naming Conventions
 - TypeScript is the source of truth—avoid `any`, rely on discriminated unions, and extend shared types from `src/types` where possible.
@@ -17,8 +15,8 @@
 - Tailwind tokens live in `tailwind.config.ts`; use semantic classes instead of raw colors. Formatting is automated, so run the lint/pretty commands before each PR.
 
 ## Testing Guidelines
-- No automated tests ship today; when introducing them, place `*.test.ts` or `*.test.tsx` near the module under test and wire them into a Vitest runner.
-- Until a suite exists, treat `npm run typecheck`, targeted lint runs, and manual smoke tests via `npm run preview` as mandatory.
+- Colocate `*.test.ts` or `*.test.tsx` files near the module under test and run them with Vitest.
+- `pnpm typecheck`, `pnpm lint`, `pnpm test`, and manual smoke tests via `pnpm preview` are mandatory for substantive changes.
 
 ## Commit & Pull Request Guidelines
 - Follow the established Conventional Commit style (`type(scope): message`) observed in history (e.g., `refactor(tooltip): enhance formatPercent function`).
@@ -26,5 +24,5 @@
 - Link tracking issues, surface breaking changes in a dedicated note, and confirm typecheck + lint status in the description before requesting review.
 
 ## Security & Configuration Tips
-- Secrets belong in `.env.local`; add illustrative keys to `docker/.env.example` when new configuration is required.
-- Fastify middleware (CORS, rate limiting) is centralized in `server/index.ts`. Update it there to preserve consistent hardening across environments.
+- The app stores provider credentials in browser `localStorage`; any change in that behavior requires explicit review because it affects the security model.
+- Connection settings live entirely on the client; avoid reintroducing hidden runtime configuration paths unless the user explicitly asks for them.

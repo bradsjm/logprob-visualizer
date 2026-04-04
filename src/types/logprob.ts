@@ -23,7 +23,6 @@ export interface CompletionLP {
   };
   model: string;
   latency?: number;
-  force_prefix_echo?: string;
 }
 
 export interface ModelInfo {

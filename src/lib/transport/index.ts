@@ -1,7 +1,12 @@
 import { StreamTransport } from "@/lib/transport/stream";
+import type { ConnectionSettings } from "@/types/connection";
 import type { Transport } from "@/types/transport";
 
 /**
- * Default streaming transport instance used for client completions.
+ * Creates a transport bound to the current connection settings.
  */
-export const transport: Transport = new StreamTransport();
+export function createTransport(
+  settings: Readonly<ConnectionSettings>,
+): Transport {
+  return new StreamTransport(settings);
+}
