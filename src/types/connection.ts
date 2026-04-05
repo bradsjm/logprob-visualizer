@@ -3,6 +3,13 @@ export interface ConnectionSettings {
   baseUrl: string;
 }
 
+export interface ProviderConnection {
+  readonly settings: ConnectionSettings;
+  readonly resolvedBaseUrl: string;
+  readonly cacheKey: string;
+  readonly hasSavedSettings: boolean;
+}
+
 export type ModelCapabilityStatus =
   | "idle"
   | "checking"

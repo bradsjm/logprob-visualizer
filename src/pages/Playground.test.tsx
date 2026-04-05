@@ -15,6 +15,12 @@ vi.mock("sonner", () => ({
 vi.mock("@/hooks/useConnectionSettings", () => ({
   useConnectionSettings: () => ({
     settings: { apiKey: "sk-test", baseUrl: "" },
+    connection: {
+      settings: { apiKey: "sk-test", baseUrl: "" },
+      resolvedBaseUrl: "https://api.openai.com/v1",
+      cacheKey: "https://api.openai.com/v1:test",
+      hasSavedSettings: true,
+    },
     resolvedBaseUrl: "https://api.openai.com/v1",
     hasSavedSettings: true,
     saveSettings: vi.fn(),
@@ -39,10 +45,10 @@ vi.mock("@/hooks/useModelCapability", () => ({
   }),
 }));
 
-vi.mock("@/lib/transport", () => ({
-  createTransport: () => ({
-    complete: mockComplete,
-  }),
+vi.mock("@/lib/transport/stream", () => ({
+  StreamTransport: class {
+    complete = mockComplete;
+  },
 }));
 
 vi.mock("@/components/AnalysisPanel", () => ({

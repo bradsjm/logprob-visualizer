@@ -30,6 +30,11 @@ export interface ModelInfo {
   name: string;
 }
 
+export interface RequestMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface RunParameters {
   temperature: number;
   top_p: number;
@@ -41,7 +46,7 @@ export interface RunParameters {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: RequestMessage["role"];
   content: string;
   tokens?: TokenLP[];
 }

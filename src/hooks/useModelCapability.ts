@@ -1,24 +1,32 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
+import { probeModelLogprobsSupport } from "@/features/provider/lib/client";
+import { providerQueryKeys } from "@/features/provider/lib/query";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { getConnectionCacheKey } from "@/lib/connection";
-import { probeModelLogprobsSupport } from "@/lib/openai";
-import type { ConnectionSettings, ModelCapability } from "@/types/connection";
+import { createProviderConnection } from "@/lib/connection";
+import type {
+  ConnectionSettings,
+  ModelCapability,
+  ProviderConnection,
+} from "@/types/connection";
 
 export interface UseModelCapabilityResult extends ModelCapability {
   isLoading: boolean;
 }
 
 export function useModelCapability(
-  settings: Readonly<ConnectionSettings>,
+  connection: Readonly<ProviderConnection> | Readonly<ConnectionSettings>,
   modelId: string | null,
 ): UseModelCapabilityResult {
+  const resolvedConnection =
+    "resolvedBaseUrl" in connection
+      ? connection
+      : createProviderConnection(connection);
   const debouncedModelId = useDebouncedValue(modelId, 500);
   const isDebouncing = modelId !== debouncedModelId;
-  const hasCredentials = settings.apiKey.trim().length > 0;
+  const hasCredentials = resolvedConnection.hasSavedSettings;
   const queryClient = useQueryClient();
-  const connectionCacheKey = getConnectionCacheKey(settings);
 
   useEffect(() => {
     if (!hasCredentials || !debouncedModelId || !isDebouncing) {
@@ -26,28 +34,25 @@ export function useModelCapability(
     }
 
     void queryClient.cancelQueries({
-      queryKey: [
-        "model-capability",
-        connectionCacheKey,
+      queryKey: providerQueryKeys.modelCapability(
+        resolvedConnection,
         debouncedModelId,
-      ],
+      ),
     });
   }, [
-    connectionCacheKey,
     debouncedModelId,
     hasCredentials,
     isDebouncing,
     queryClient,
+    resolvedConnection,
   ]);
 
   const query = useQuery({
-    queryKey: [
-      "model-capability",
-      connectionCacheKey,
-      debouncedModelId,
-    ],
+    queryKey: debouncedModelId
+      ? providerQueryKeys.modelCapability(resolvedConnection, debouncedModelId)
+      : ["provider", "model-capability", resolvedConnection.cacheKey, "idle"],
     queryFn: async ({ signal }) =>
-      probeModelLogprobsSupport(settings, debouncedModelId!, signal),
+      probeModelLogprobsSupport(resolvedConnection, debouncedModelId!, signal),
     enabled: hasCredentials && Boolean(debouncedModelId),
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,

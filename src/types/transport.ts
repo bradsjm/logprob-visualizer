@@ -1,10 +1,7 @@
-import type { CompletionLP, TokenLP } from "@/types/logprob";
+import type { CompletionLP, RequestMessage, TokenLP } from "@/types/logprob";
 
 export interface CompleteParams {
-  readonly messages: readonly {
-    readonly role: "user" | "assistant";
-    readonly content: string;
-  }[];
+  readonly messages: readonly RequestMessage[];
   readonly model: string;
   readonly temperature: number;
   readonly top_p: number;

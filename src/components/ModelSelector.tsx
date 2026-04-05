@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { getRunParameterDefinition } from "@/features/playground/lib/runParameters";
 import type { ModelInfo } from "@/types/logprob";
 
 interface ModelSelectorProps {
@@ -31,6 +32,8 @@ export const ModelSelector = ({
   disabled = false,
   isLoading = false,
 }: ModelSelectorProps) => {
+  const temperatureDefinition = getRunParameterDefinition("temperature");
+
   return (
     <div className="flex items-center gap-4">
       <Select
@@ -65,16 +68,16 @@ export const ModelSelector = ({
         <div className="flex-1 max-w-[180px]">
           <Slider
             id="header-temp"
-            min={0}
-            max={2}
-            step={0.1}
+            min={temperatureDefinition.min}
+            max={temperatureDefinition.max}
+            step={temperatureDefinition.step}
             value={[temperature]}
             disabled={disabled}
             onValueChange={([v]) => onTemperatureChange(v)}
           />
         </div>
         <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">
-          {temperature.toFixed(1)}
+          {Number(temperatureDefinition.formatValue(temperature)).toFixed(1)}
         </span>
       </div>
     </div>

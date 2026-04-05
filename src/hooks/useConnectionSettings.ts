@@ -1,26 +1,27 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   clearStoredConnectionSettings,
-  hasConnectionSettings,
+  createProviderConnection,
   readStoredConnectionSettings,
-  resolveBaseUrl,
   writeStoredConnectionSettings,
 } from "@/lib/connection";
-import type { ConnectionSettings } from "@/types/connection";
+import type { ConnectionSettings, ProviderConnection } from "@/types/connection";
 
 export interface UseConnectionSettingsResult {
-  settings: ConnectionSettings;
-  resolvedBaseUrl: string;
-  hasSavedSettings: boolean;
-  saveSettings: (next: Readonly<ConnectionSettings>) => void;
-  clearSettings: () => void;
+  readonly settings: ConnectionSettings;
+  readonly connection: ProviderConnection;
+  readonly resolvedBaseUrl: string;
+  readonly hasSavedSettings: boolean;
+  readonly saveSettings: (next: Readonly<ConnectionSettings>) => void;
+  readonly clearSettings: () => void;
 }
 
 export function useConnectionSettings(): UseConnectionSettingsResult {
   const [settings, setSettings] = useState<ConnectionSettings>(() =>
     readStoredConnectionSettings(),
   );
+  const connection = useMemo(() => createProviderConnection(settings), [settings]);
 
   const saveSettings = (next: Readonly<ConnectionSettings>): void => {
     setSettings(writeStoredConnectionSettings(next));
@@ -33,8 +34,9 @@ export function useConnectionSettings(): UseConnectionSettingsResult {
 
   return {
     settings,
-    resolvedBaseUrl: resolveBaseUrl(settings.baseUrl),
-    hasSavedSettings: hasConnectionSettings(settings),
+    connection,
+    resolvedBaseUrl: connection.resolvedBaseUrl,
+    hasSavedSettings: connection.hasSavedSettings,
     saveSettings,
     clearSettings,
   };

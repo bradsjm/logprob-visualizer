@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getConnectionCacheKey } from "@/lib/connection";
-import { fetchProviderModels } from "@/lib/openai";
-import type { ConnectionSettings } from "@/types/connection";
+import { fetchProviderModels } from "@/features/provider/lib/client";
+import { providerQueryKeys } from "@/features/provider/lib/query";
+import { createProviderConnection } from "@/lib/connection";
+import type { ConnectionSettings, ProviderConnection } from "@/types/connection";
 import type { ModelInfo } from "@/types/logprob";
 
 export interface UseModelsResult {
@@ -16,13 +17,17 @@ export interface UseModelsResult {
  * Fetches available models from the configured provider and caches them in memory.
  */
 export function useModels(
-  settings: Readonly<ConnectionSettings>,
-  resolvedBaseUrl: string,
+  connection: Readonly<ProviderConnection> | Readonly<ConnectionSettings>,
 ): UseModelsResult {
+  const resolvedConnection =
+    "resolvedBaseUrl" in connection
+      ? connection
+      : createProviderConnection(connection);
+
   const query = useQuery({
-    queryKey: ["models", resolvedBaseUrl, getConnectionCacheKey(settings)],
-    queryFn: async () => fetchProviderModels(settings),
-    enabled: settings.apiKey.trim().length > 0,
+    queryKey: providerQueryKeys.models(resolvedConnection),
+    queryFn: async () => fetchProviderModels(resolvedConnection),
+    enabled: resolvedConnection.hasSavedSettings,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: false,

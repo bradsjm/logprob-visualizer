@@ -12,6 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import {
+  getRunParameterDefinition,
+  normalizeRunParameter,
+} from "@/features/playground/lib/runParameters";
 import type { RunParameters } from "@/types/logprob";
 
 interface ParametersDrawerProps {
@@ -42,6 +46,16 @@ export const ParametersDrawer = ({
   const updateParameter = (key: keyof RunParameters, value: number) => {
     onParametersChange({ ...parameters, [key]: value });
   };
+  const temperatureDefinition = getRunParameterDefinition("temperature");
+  const topPDefinition = getRunParameterDefinition("top_p");
+  const maxCompletionTokensDefinition = getRunParameterDefinition(
+    "max_completion_tokens",
+  );
+  const topLogprobsDefinition = getRunParameterDefinition("top_logprobs");
+  const presencePenaltyDefinition = getRunParameterDefinition("presence_penalty");
+  const frequencyPenaltyDefinition = getRunParameterDefinition(
+    "frequency_penalty",
+  );
 
   return (
     <Dialog
@@ -67,16 +81,16 @@ export const ParametersDrawer = ({
 
         <div className="px-6 pb-4 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Temperature */}
             <div className="space-y-2">
               <Label htmlFor="temperature">
-                Temperature: {parameters.temperature}
+                {temperatureDefinition.label}:{" "}
+                {temperatureDefinition.formatValue(parameters.temperature)}
               </Label>
               <Slider
                 id="temperature"
-                min={0}
-                max={2}
-                step={0.1}
+                min={temperatureDefinition.min}
+                max={temperatureDefinition.max}
+                step={temperatureDefinition.step}
                 value={[parameters.temperature]}
                 onValueChange={([value]) =>
                   updateParameter("temperature", value)
@@ -84,61 +98,64 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Controls randomness. Higher = more creative, lower = more
-                focused.
+                {temperatureDefinition.description}
               </p>
             </div>
 
-            {/* Top-p */}
             <div className="space-y-2">
-              <Label htmlFor="top-p">Top-p: {parameters.top_p}</Label>
+              <Label htmlFor="top-p">
+                {topPDefinition.label}: {topPDefinition.formatValue(parameters.top_p)}
+              </Label>
               <Slider
                 id="top-p"
-                min={0}
-                max={1}
-                step={0.05}
+                min={topPDefinition.min}
+                max={topPDefinition.max}
+                step={topPDefinition.step}
                 value={[parameters.top_p]}
                 onValueChange={([value]) => updateParameter("top_p", value)}
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Limits choices to the most likely words; lower stays safe,
-                higher invites more variety.
+                {topPDefinition.description}
               </p>
             </div>
 
-            {/* Max completion tokens */}
             <div className="space-y-2">
-              <Label htmlFor="max-completion-tokens">Max completion tokens</Label>
+              <Label htmlFor="max-completion-tokens">
+                {maxCompletionTokensDefinition.label}
+              </Label>
               <Input
                 id="max-completion-tokens"
                 type="number"
-                min={1}
-                max={256}
+                min={maxCompletionTokensDefinition.min}
+                max={maxCompletionTokensDefinition.max}
                 value={parameters.max_completion_tokens}
                 onChange={(e) =>
                   updateParameter(
                     "max_completion_tokens",
-                    Math.min(256, Math.max(1, parseInt(e.target.value) || 1)),
+                    normalizeRunParameter(
+                      "max_completion_tokens",
+                      parseInt(e.target.value, 10) || 1,
+                    ),
                   )
                 }
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Maximum completion length (capped at 256).
+                {maxCompletionTokensDefinition.description}
               </p>
             </div>
 
-            {/* Top logprobs */}
             <div className="space-y-2">
               <Label htmlFor="top-logprobs">
-                Top alternatives: {parameters.top_logprobs}
+                {topLogprobsDefinition.label}:{" "}
+                {topLogprobsDefinition.formatValue(parameters.top_logprobs)}
               </Label>
               <Slider
                 id="top-logprobs"
-                min={1}
-                max={10}
-                step={1}
+                min={topLogprobsDefinition.min}
+                max={topLogprobsDefinition.max}
+                step={topLogprobsDefinition.step}
                 value={[parameters.top_logprobs]}
                 onValueChange={([value]) =>
                   updateParameter("top_logprobs", value)
@@ -146,22 +163,20 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Number of alternative tokens to show (max 10).
+                {topLogprobsDefinition.description}
               </p>
             </div>
 
-            {/* Top-k removed */}
-
-            {/* Presence penalty */}
             <div className="space-y-2">
               <Label htmlFor="presence-penalty">
-                Presence penalty: {parameters.presence_penalty}
+                {presencePenaltyDefinition.label}:{" "}
+                {presencePenaltyDefinition.formatValue(parameters.presence_penalty)}
               </Label>
               <Slider
                 id="presence-penalty"
-                min={-2}
-                max={2}
-                step={0.1}
+                min={presencePenaltyDefinition.min}
+                max={presencePenaltyDefinition.max}
+                step={presencePenaltyDefinition.step}
                 value={[parameters.presence_penalty]}
                 onValueChange={([value]) =>
                   updateParameter("presence_penalty", value)
@@ -169,21 +184,20 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Encourage fresh topics. Increase to avoid repeating the same
-                ideas.
+                {presencePenaltyDefinition.description}
               </p>
             </div>
 
-            {/* Frequency penalty */}
             <div className="space-y-2">
               <Label htmlFor="frequency-penalty">
-                Frequency penalty: {parameters.frequency_penalty}
+                {frequencyPenaltyDefinition.label}:{" "}
+                {frequencyPenaltyDefinition.formatValue(parameters.frequency_penalty)}
               </Label>
               <Slider
                 id="frequency-penalty"
-                min={-2}
-                max={2}
-                step={0.1}
+                min={frequencyPenaltyDefinition.min}
+                max={frequencyPenaltyDefinition.max}
+                step={frequencyPenaltyDefinition.step}
                 value={[parameters.frequency_penalty]}
                 onValueChange={([value]) =>
                   updateParameter("frequency_penalty", value)
@@ -191,8 +205,7 @@ export const ParametersDrawer = ({
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Rein in repeated words. Higher values cut down on echoing
-                phrases.
+                {frequencyPenaltyDefinition.description}
               </p>
             </div>
           </div>

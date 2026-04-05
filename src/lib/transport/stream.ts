@@ -1,12 +1,13 @@
-import { normalizeConnectionSettings, resolveBaseUrl } from "@/lib/connection";
+import { sanitizeRunParameters } from "@/features/playground/lib/runParameters";
+import { readErrorDetail } from "@/features/provider/lib/client";
 import {
   buildCompletionFromState,
   consumeStreamChunk,
   extractStreamError,
-  parseOpenAIStream,
-  readErrorDetail,
-} from "@/lib/openai";
-import type { ConnectionSettings } from "@/types/connection";
+  parseServerSentEvents,
+} from "@/features/provider/lib/streamParser";
+import { createProviderConnection } from "@/lib/connection";
+import type { ConnectionSettings, ProviderConnection } from "@/types/connection";
 import type {
   CompleteParams,
   Stream,
@@ -15,10 +16,11 @@ import type {
 } from "@/types/transport";
 
 function buildBody(params: Readonly<CompleteParams>): CompleteParams {
+  const sanitizedParameters = sanitizeRunParameters(params);
+
   return {
     ...params,
-    max_completion_tokens: Math.max(1, Math.min(256, params.max_completion_tokens)),
-    top_logprobs: Math.max(1, Math.min(10, params.top_logprobs)),
+    ...sanitizedParameters,
   } satisfies CompleteParams;
 }
 
@@ -26,11 +28,18 @@ function buildBody(params: Readonly<CompleteParams>): CompleteParams {
  * Implements the transport contract using direct browser streaming from a provider.
  */
 export class StreamTransport implements Transport {
-  constructor(private readonly settings: Readonly<ConnectionSettings>) {}
+  private readonly connection: ProviderConnection;
+
+  constructor(connection: Readonly<ProviderConnection> | Readonly<ConnectionSettings>) {
+    this.connection =
+      "resolvedBaseUrl" in connection
+        ? connection
+        : createProviderConnection(connection);
+  }
 
   complete(params: Readonly<CompleteParams>): Stream<StreamEvent> {
     const controller = new AbortController();
-    const normalizedSettings = normalizeConnectionSettings(this.settings);
+    const connection = this.connection;
     const body = JSON.stringify({
       ...buildBody(params),
       logprobs: true,
@@ -43,11 +52,11 @@ export class StreamTransport implements Transport {
     const execute = async function* () {
       const startedAt = Date.now();
       const res = await fetch(
-        `${resolveBaseUrl(normalizedSettings.baseUrl)}/chat/completions`,
+        `${connection.resolvedBaseUrl}/chat/completions`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${normalizedSettings.apiKey}`,
+            Authorization: `Bearer ${connection.settings.apiKey}`,
             "Content-Type": "application/json",
           },
           body,
@@ -73,7 +82,7 @@ export class StreamTransport implements Transport {
       };
 
       try {
-        for await (const data of parseOpenAIStream(res.body.getReader())) {
+        for await (const data of parseServerSentEvents(res.body.getReader())) {
           if (data === "[DONE]") {
             break;
           }
@@ -95,8 +104,6 @@ export class StreamTransport implements Transport {
           }
 
           const { deltaText, tokenEvents } = consumeStreamChunk(
-            params,
-            startedAt,
             state,
             chunk as {
               model?: unknown;

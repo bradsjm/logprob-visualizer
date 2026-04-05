@@ -1,4 +1,4 @@
-import type { ConnectionSettings } from "@/types/connection";
+import type { ConnectionSettings, ProviderConnection } from "@/types/connection";
 
 export const CONNECTION_SETTINGS_STORAGE_KEY =
   "logprob-visualizer.connection.v1";
@@ -19,7 +19,9 @@ export function normalizeConnectionSettings(
 }
 
 export function resolveBaseUrl(baseUrl: string): string {
-  return baseUrl.trim() ? normalizeConnectionSettings({ apiKey: "", baseUrl }).baseUrl : DEFAULT_OPENAI_BASE_URL;
+  return baseUrl.trim()
+    ? normalizeConnectionSettings({ apiKey: "", baseUrl }).baseUrl
+    : DEFAULT_OPENAI_BASE_URL;
 }
 
 export function validateBaseUrl(baseUrl: string): string | null {
@@ -83,15 +85,7 @@ export function clearStoredConnectionSettings(): void {
   }
 }
 
-export function hasConnectionSettings(
-  settings: Readonly<ConnectionSettings>,
-): boolean {
-  return normalizeConnectionSettings(settings).apiKey.length > 0;
-}
-
-export function getConnectionCacheKey(
-  settings: Readonly<ConnectionSettings>,
-): string {
+function buildConnectionCacheKey(settings: Readonly<ConnectionSettings>): string {
   const normalized = normalizeConnectionSettings(settings);
   if (!normalized.apiKey) {
     return `${resolveBaseUrl(normalized.baseUrl)}:anonymous`;
@@ -103,4 +97,17 @@ export function getConnectionCacheKey(
   }
 
   return `${resolveBaseUrl(normalized.baseUrl)}:${hash.toString(16)}`;
+}
+
+export function createProviderConnection(
+  settings: Readonly<ConnectionSettings>,
+): ProviderConnection {
+  const normalizedSettings = normalizeConnectionSettings(settings);
+
+  return {
+    settings: normalizedSettings,
+    resolvedBaseUrl: resolveBaseUrl(normalizedSettings.baseUrl),
+    cacheKey: buildConnectionCacheKey(normalizedSettings),
+    hasSavedSettings: normalizedSettings.apiKey.length > 0,
+  };
 }
