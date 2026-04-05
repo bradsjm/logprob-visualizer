@@ -45,7 +45,7 @@ export function ConnectionSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-3xl bg-background">
         <DialogHeader>
           <DialogTitle>Connection Settings</DialogTitle>
           <DialogDescription>
