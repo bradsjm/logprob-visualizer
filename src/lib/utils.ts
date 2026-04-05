@@ -53,42 +53,41 @@ export function findNextLowConfidenceIndex(
   return null;
 }
 
-/**
- * Compute quantile clamp bounds for a token list to map logprobs to colors.
- * Falls back to [-10, 0] and clamps overall to [-20, 0].
- */
-export function calculateQuantiles(tokens: readonly TokenLP[]): {
-  min: number;
-  max: number;
-} {
-  const logprobs = [...tokens].map((t) => t.logprob).sort((a, b) => a - b);
-  const q = (p: number): number => {
-    if (logprobs.length === 0) return -10;
-    const idx = Math.floor(logprobs.length * p);
-    return logprobs[Math.min(Math.max(idx, 0), logprobs.length - 1)] ?? -10;
-  };
-  const q05 = q(0.05);
-  const q95 = q(0.95);
-  const min = Math.max(q05, -20);
-  const max = Math.min(q95, 0);
-  return { min, max };
+export function formatProbabilityPercent(
+  prob: number,
+  fractionDigits: number = 2,
+): string {
+  if (!Number.isFinite(prob) || prob < 0) {
+    return `< 0.${"0".repeat(Math.max(fractionDigits - 1, 0))}1%`;
+  }
+
+  const scale = 10 ** fractionDigits;
+  const clampedProb = Math.min(prob, 1);
+  const flooredPercent = Math.floor(clampedProb * 100 * scale) / scale;
+
+  if (flooredPercent < 1 / scale) {
+    return `< 0.${"0".repeat(Math.max(fractionDigits - 1, 0))}1%`;
+  }
+
+  if (clampedProb < 1) {
+    const cappedPercent = Math.min(flooredPercent, 100 - 1 / scale);
+    return `${cappedPercent.toFixed(fractionDigits)}%`;
+  }
+
+  return `${flooredPercent.toFixed(fractionDigits)}%`;
 }
 
-/** Map a logprob to one of the token color classes using [min,max] bounds. */
+/** Map an absolute probability to one of the token color classes. */
 export function getTokenColorClass(
-  logprob: number,
-  min: number,
-  max: number,
+  prob: number,
 ):
   | "token-low-prob"
   | "token-med-low-prob"
   | "token-med-high-prob"
   | "token-high-prob" {
-  const denom = max - min || 1;
-  const normalized = (logprob - min) / denom;
-  if (normalized < 0.25) return "token-low-prob";
-  if (normalized < 0.5) return "token-med-low-prob";
-  if (normalized < 0.75) return "token-med-high-prob";
+  if (prob < 0.25) return "token-low-prob";
+  if (prob < 0.5) return "token-med-low-prob";
+  if (prob < 0.75) return "token-med-high-prob";
   return "token-high-prob";
 }
 

@@ -2,6 +2,7 @@ import { normalizeConnectionSettings, resolveBaseUrl } from "@/lib/connection";
 import {
   buildCompletionFromState,
   consumeStreamChunk,
+  extractStreamError,
   parseOpenAIStream,
   readErrorDetail,
 } from "@/lib/openai";
@@ -34,6 +35,9 @@ export class StreamTransport implements Transport {
       ...buildBody(params),
       logprobs: true,
       stream: true,
+      stream_options: {
+        include_usage: true,
+      },
     });
 
     const execute = async function* () {
@@ -79,6 +83,15 @@ export class StreamTransport implements Transport {
             chunk = JSON.parse(data);
           } catch {
             continue;
+          }
+
+          const streamError = extractStreamError(chunk);
+          if (streamError) {
+            yield {
+              type: "done",
+              error: streamError,
+            } as const;
+            return;
           }
 
           const { deltaText, tokenEvents } = consumeStreamChunk(

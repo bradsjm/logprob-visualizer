@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  calculateQuantiles,
+  formatProbabilityPercent,
   getTokenColorClass,
   tokenColorToTextClass,
 } from "@/lib/utils";
@@ -26,8 +26,8 @@ const CHART_HEIGHT = 256;
 const CHART_WIDTH = 720;
 const MARGIN = { top: 16, right: 24, bottom: 28, left: 44 };
 
-function colorForToken(logprob: number, min: number, max: number): string {
-  switch (getTokenColorClass(logprob, min, max)) {
+function colorForToken(prob: number): string {
+  switch (getTokenColorClass(prob)) {
     case "token-low-prob":
       return "hsl(var(--token-low))";
     case "token-med-low-prob":
@@ -68,7 +68,6 @@ export function LogprobChart({
 }: LogprobChartProps) {
   const { ref, width } = useMeasuredWidth<HTMLDivElement>();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const { min, max } = useMemo(() => calculateQuantiles(tokens), [tokens]);
 
   const plotWidth = Math.max(width - MARGIN.left - MARGIN.right, 1);
   const plotHeight = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
@@ -181,7 +180,7 @@ export function LogprobChart({
         ) : null}
 
         {points.map((point) => {
-          const color = colorForToken(point.logprob, min, max);
+          const color = colorForToken(point.prob);
           return (
             <circle
               key={point.index}
@@ -209,16 +208,6 @@ export function LogprobChart({
         >
           Token Index
         </text>
-        <text
-          x="14"
-          y={MARGIN.top + plotHeight / 2}
-          fontSize="12"
-          textAnchor="middle"
-          transform={`rotate(-90 14 ${MARGIN.top + plotHeight / 2})`}
-          fill="hsl(var(--muted-foreground))"
-        >
-          Probability (%)
-        </text>
       </svg>
 
       {hoveredPoint ? (
@@ -233,7 +222,7 @@ export function LogprobChart({
           <p className="text-sm">
             <code
               className={`rounded bg-muted px-1 text-xs ${tokenColorToTextClass(
-                getTokenColorClass(hoveredPoint.logprob, min, max),
+                getTokenColorClass(hoveredPoint.prob),
               )}`}
             >
               "{hoveredPoint.token}"
@@ -242,7 +231,7 @@ export function LogprobChart({
           <p className="text-sm text-muted-foreground">
             Probability:{" "}
             <span className="font-medium">
-              {(hoveredPoint.prob * 100).toFixed(2)}%
+              {formatProbabilityPercent(hoveredPoint.prob)}
             </span>
           </p>
           <p className="text-sm text-muted-foreground">

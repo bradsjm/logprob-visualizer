@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StickToBottomInstance } from "use-stick-to-bottom";
 
 import { TokenTooltip } from "./TokenTooltip";
@@ -7,7 +7,7 @@ import { TokenTooltip } from "./TokenTooltip";
 import {
   isPunctuationToken,
   isWhitespaceToken,
-  calculateQuantiles,
+  formatProbabilityPercent,
   getTokenColorClass,
 } from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
@@ -25,8 +25,6 @@ interface TokenTextProps {
   showPunctuationOverlays?: boolean;
   /** Optional scroll container to drive progressive virtualization. */
   scrollContainerRef?: ScrollContainerRef;
-  /** Optional precomputed quantiles for consistent coloring across chunks. */
-  quantiles?: { readonly min: number; readonly max: number };
 }
 
 // (moved to utils)
@@ -42,17 +40,10 @@ export const TokenText = ({
   showWhitespaceOverlays = false,
   showPunctuationOverlays = false,
   scrollContainerRef,
-  quantiles,
 }: TokenTextProps) => {
   const [pinnedTooltip, setPinnedTooltip] = useState<number | null>(null);
   const [hoveredToken, setHoveredToken] = useState<number | null>(null);
   const spanRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  // Quantiles are memoized and can be provided from parent to keep color scale stable
-  const { min, max } = useMemo(
-    () => quantiles ?? calculateQuantiles(tokens),
-    [tokens, quantiles],
-  );
 
   // Progressive virtualization: render in slices when token count is large to avoid
   // mounting hundreds of spans at once. We increment on intersection with a sentinel.
@@ -131,7 +122,7 @@ export const TokenText = ({
         const tokenIsWhitespace = isWhitespaceToken(token.token);
         const tokenIsPunct = isPunctuationToken(token.token);
 
-        let colorClass: string = getTokenColorClass(token.logprob, min, max);
+        let colorClass: string = getTokenColorClass(token.prob);
         let isLowProb = token.prob < 0.5; // Show dashed underline for low probability
 
         if (
@@ -159,7 +150,7 @@ export const TokenText = ({
               aria-pressed={isInteractive && pinnedTooltip === tokenIndex ? true : undefined}
               tabIndex={isInteractive ? 0 : undefined}
               aria-describedby={showTooltip ? tooltipId : undefined}
-              aria-label={`Token ${JSON.stringify(token.token)}, probability ${(token.prob * 100).toFixed(1)}%`}
+              aria-label={`Token ${JSON.stringify(token.token)}, probability ${formatProbabilityPercent(token.prob, 1)}`}
               onMouseEnter={() => {
                 if (isInteractive) setHoveredToken(tokenIndex);
               }}
@@ -186,8 +177,6 @@ export const TokenText = ({
                   setHoveredToken(null);
                 }}
                 isPinned={pinnedTooltip === tokenIndex}
-                min={min}
-                max={max}
                 anchorEl={spanRefs.current[tokenIndex]}
               />
             )}

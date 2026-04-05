@@ -1,16 +1,19 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import type { StickToBottomInstance } from "use-stick-to-bottom";
 
 import { TokenText } from "./TokenText";
 
-import { calculateQuantiles } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { ChatMessage } from "@/types/logprob";
 
 interface ChatTranscriptProps {
   messages: ChatMessage[];
   isLoading: boolean;
   onTokenClick: (tokenIndex: number, newToken: string) => void;
+  onRegenerateMessage?: (messageId: string) => void;
+  regenerableMessageId?: string | null;
+  isRegenerateDisabled?: boolean;
   activeCompletionMessageId: string | null;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
@@ -37,8 +40,6 @@ const AssistantTokens = ({
   showPunctuationOverlays,
   scrollContainerRef,
 }: AssistantTokensProps) => {
-  // Keep color scale stable across progressive rendering by using global quantiles.
-  const q = calculateQuantiles(tokens);
   return (
     <TokenText
       tokens={tokens}
@@ -48,7 +49,6 @@ const AssistantTokens = ({
       showWhitespaceOverlays={showWhitespaceOverlays}
       showPunctuationOverlays={showPunctuationOverlays}
       scrollContainerRef={scrollContainerRef}
-      quantiles={q}
     />
   );
 };
@@ -60,6 +60,9 @@ export const ChatTranscript = ({
   messages,
   isLoading,
   onTokenClick,
+  onRegenerateMessage,
+  regenerableMessageId = null,
+  isRegenerateDisabled = false,
   activeCompletionMessageId,
   showWhitespaceOverlays = false,
   showPunctuationOverlays = false,
@@ -93,7 +96,20 @@ export const ChatTranscript = ({
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </div>
             ) : (
-              <div className="chat-bubble-assistant">
+              <div className="chat-bubble-assistant group relative pr-12">
+                {message.id === regenerableMessageId && onRegenerateMessage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-2 h-8 w-8 rounded-full text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    aria-label="Regenerate response"
+                    disabled={isRegenerateDisabled}
+                    onClick={() => onRegenerateMessage(message.id)}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                ) : null}
                 <p className="text-sm font-medium text-card-foreground mb-2">Assistant</p>
                 {message.tokens ? (
                   <AssistantTokens

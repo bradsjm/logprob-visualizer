@@ -15,7 +15,6 @@ import { ChatTranscript } from "@/components/ChatTranscript";
 import { Composer, type ComposerHandle } from "@/components/Composer";
 import { ConnectionSettingsDialog } from "@/components/ConnectionSettingsDialog";
 import { ModelSelector } from "@/components/ModelSelector";
-import { ParameterBadges } from "@/components/ParameterBadges";
 import { PresetChips } from "@/components/PresetChips";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -57,6 +56,67 @@ function replaceMessage(
   const nextMessages = [...messages];
   nextMessages[nextIndex] = nextMessage;
   return nextMessages;
+}
+
+function removeMessage(
+  messages: readonly ChatMessage[],
+  messageId: string,
+): ChatMessage[] {
+  return messages.filter((message) => message.id !== messageId);
+}
+
+interface AnalysisSnapshot {
+  readonly completion: CompletionLP;
+  readonly activeCompletionMessageId: string;
+  readonly lastLowIndex: number | null;
+}
+
+interface AssistantRunSpec {
+  readonly requestMessages: readonly ChatMessage[];
+  readonly assistantMessageId: string;
+  readonly commitOptimisticMessages: (
+    messages: readonly ChatMessage[],
+  ) => ChatMessage[];
+  readonly handleFailedMessages: (
+    messages: readonly ChatMessage[],
+  ) => ChatMessage[];
+  readonly analysisSnapshot: AnalysisSnapshot | null;
+  readonly startAnnouncement: string;
+  readonly failureAnnouncement: string;
+  readonly cancellationAnnouncement: string;
+}
+
+function getLatestRegenerableAssistantContext(
+  messages: readonly ChatMessage[],
+):
+  | {
+    readonly assistantIndex: number;
+    readonly assistantMessage: ChatMessage;
+    readonly requestMessages: readonly ChatMessage[];
+  }
+  | null {
+  if (messages.length < 2) {
+    return null;
+  }
+
+  const assistantIndex = messages.length - 1;
+  const assistantMessage = messages[assistantIndex];
+  const precedingMessage = messages[assistantIndex - 1];
+
+  if (
+    !assistantMessage ||
+    assistantMessage.role !== "assistant" ||
+    !precedingMessage ||
+    precedingMessage.role !== "user"
+  ) {
+    return null;
+  }
+
+  return {
+    assistantIndex,
+    assistantMessage,
+    requestMessages: messages.slice(0, assistantIndex),
+  };
 }
 
 /**
@@ -340,8 +400,47 @@ const Playground = () => {
     };
   }, [capability.message, capability.status]);
 
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim()) return;
+  const regenerableAssistant = useMemo(
+    () => getLatestRegenerableAssistantContext(messages),
+    [messages],
+  );
+
+  const restoreAnalysisSnapshot = (snapshot: AnalysisSnapshot | null) => {
+    clearHoveredToken();
+    if (!snapshot) {
+      resetAnalysisState();
+      return;
+    }
+
+    setCurrentCompletion(snapshot.completion);
+    setActiveCompletionMessageId(snapshot.activeCompletionMessageId);
+    setLastLowIndex(snapshot.lastLowIndex);
+  };
+
+  const buildAnalysisSnapshot = (
+    messageId: string,
+  ): AnalysisSnapshot | null => {
+    if (!currentCompletion || activeCompletionMessageId !== messageId) {
+      return null;
+    }
+
+    return {
+      completion: currentCompletion,
+      activeCompletionMessageId,
+      lastLowIndex,
+    };
+  };
+
+  const runAssistantCompletion = async ({
+    requestMessages,
+    assistantMessageId,
+    commitOptimisticMessages,
+    handleFailedMessages,
+    analysisSnapshot,
+    startAnnouncement,
+    failureAnnouncement,
+    cancellationAnnouncement,
+  }: AssistantRunSpec) => {
     if (!selectedModel || blockState) {
       if (blockState?.kind === "missing-settings") {
         setIsSettingsOpen(true);
@@ -356,24 +455,19 @@ const Playground = () => {
 
     abortActiveStream(false);
     resetAnalysisState();
+    setMessages((prev) => commitOptimisticMessages(prev));
 
     const runId = runSequenceRef.current + 1;
     runSequenceRef.current = runId;
-    const userMessage = { id: nextMessageId(), role: "user" as const, content };
-    const assistantMessageId = nextMessageId();
-    const assistantMessage = {
-      id: assistantMessageId,
-      role: "assistant" as const,
-      content: "",
-    };
-    const newMessages = [...messages, userMessage];
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setIsLoading(true);
-    setLiveMessage("Sending request...");
+    setLiveMessage(startAnnouncement);
 
     try {
       const stream = transport.complete({
-        messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+        messages: requestMessages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
         model: selectedModel.id,
         temperature: runParameters.temperature,
         top_p: runParameters.top_p,
@@ -388,6 +482,8 @@ const Playground = () => {
       let flushScheduled = false;
       let flushRaf: number | null = null;
       let haveShownTokens = false;
+      let discardAssistantMessage = false;
+      let requestFailureMessage: string | null = null;
 
       activeRunIdRef.current = runId;
       activeStreamRef.current = stream;
@@ -462,8 +558,13 @@ const Playground = () => {
           } else if (evt.type === "done") {
             cancelPendingFlush();
             if (evt.error) {
-              toast("Streaming error", { description: evt.error });
+              discardAssistantMessage = true;
+              requestFailureMessage = evt.error;
+              restoreAnalysisSnapshot(analysisSnapshot);
+              setLiveMessage(failureAnnouncement);
+              continue;
             }
+
             const finalText = evt.completion?.text ?? streamText;
             setMessages((prev) => {
               const existingMessage = prev.find(
@@ -491,13 +592,21 @@ const Playground = () => {
       } catch (err) {
         const name = (err as { name?: string } | null)?.name;
         if (name === "AbortError" || cancelRequestedRef.current) {
-          resetAnalysisState();
-          setLiveMessage("Streaming canceled");
+          discardAssistantMessage = true;
+          restoreAnalysisSnapshot(analysisSnapshot);
+          setLiveMessage(cancellationAnnouncement);
         } else {
           throw err;
         }
       } finally {
         cancelPendingFlush();
+        if (discardAssistantMessage) {
+          setMessages((prev) => handleFailedMessages(prev));
+          if (requestFailureMessage) {
+            toast("Request failed", { description: requestFailureMessage });
+            composerRef.current?.focus();
+          }
+        }
         if (activeRunIdRef.current === runId) {
           activeRunIdRef.current = null;
           activeStreamRef.current = null;
@@ -506,16 +615,79 @@ const Playground = () => {
         cancelRequestedRef.current = false;
       }
     } catch (error) {
-      resetAnalysisState();
+      restoreAnalysisSnapshot(analysisSnapshot);
       const message = (error as Error).message;
+      setMessages((prev) => handleFailedMessages(prev));
       console.error("Error generating response:", message);
       toast("Request failed", { description: message });
-      setLiveMessage("Request failed. Focus returned to composer.");
-      // Accessibility: restore focus to composer on error
+      setLiveMessage(failureAnnouncement);
       composerRef.current?.focus();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim()) return;
+    const userMessage = { id: nextMessageId(), role: "user" as const, content };
+    const assistantMessageId = nextMessageId();
+    const assistantMessage = {
+      id: assistantMessageId,
+      role: "assistant" as const,
+      content: "",
+    };
+    const requestMessages = [...messages, userMessage];
+
+    await runAssistantCompletion({
+      requestMessages,
+      assistantMessageId,
+      commitOptimisticMessages: (existingMessages) => [
+        ...existingMessages,
+        userMessage,
+        assistantMessage,
+      ],
+      handleFailedMessages: (existingMessages) =>
+        removeMessage(existingMessages, assistantMessageId),
+      analysisSnapshot: null,
+      startAnnouncement: "Sending request...",
+      failureAnnouncement: "Request failed. Focus returned to composer.",
+      cancellationAnnouncement: "Streaming canceled",
+    });
+  };
+
+  const handleRegenerateMessage = async (messageId: string) => {
+    const context = regenerableAssistant;
+    if (!context || context.assistantMessage.id !== messageId) {
+      return;
+    }
+
+    const emptyAssistantMessage: ChatMessage = {
+      id: context.assistantMessage.id,
+      role: "assistant",
+      content: "",
+    };
+    const analysisSnapshot = buildAnalysisSnapshot(context.assistantMessage.id);
+
+    await runAssistantCompletion({
+      requestMessages: context.requestMessages,
+      assistantMessageId: context.assistantMessage.id,
+      commitOptimisticMessages: (existingMessages) =>
+        replaceMessage(
+          existingMessages,
+          context.assistantMessage.id,
+          emptyAssistantMessage,
+        ),
+      handleFailedMessages: (existingMessages) =>
+        replaceMessage(
+          existingMessages,
+          context.assistantMessage.id,
+          context.assistantMessage,
+        ),
+      analysisSnapshot,
+      startAnnouncement: "Regenerating response…",
+      failureAnnouncement: "Regeneration failed. Previous response restored.",
+      cancellationAnnouncement: "Regeneration canceled. Previous response restored.",
+    });
   };
 
   const handleBranch = (tokenIndex: number, newToken: string) => {
@@ -656,16 +828,17 @@ const Playground = () => {
             }
           />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Button
             type="button"
+            size="sm"
             onClick={() => setIsSettingsOpen(true)}
             variant={hasSavedSettings ? "outline" : "default"}
+            className="h-8 px-2 text-xs"
           >
             <KeyRound className="mr-2 h-4 w-4" />
             {hasSavedSettings ? "Connection Settings" : "Set API Key"}
           </Button>
-          <ParameterBadges parameters={runParameters} />
         </div>
       </header>
 
@@ -678,13 +851,13 @@ const Playground = () => {
               <Alert
                 variant={
                   blockState?.kind === "unsupported-model" ||
-                  blockState?.kind === "model-error"
+                    blockState?.kind === "model-error"
                     ? "destructive"
                     : "default"
                 }
               >
                 {blockState?.kind === "checking-capability" ||
-                blockState?.kind === "loading-models" ? (
+                  blockState?.kind === "loading-models" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <AlertCircle className="h-4 w-4" />
@@ -700,6 +873,9 @@ const Playground = () => {
             messages={messages}
             isLoading={isLoading}
             onTokenClick={handleBranch}
+            onRegenerateMessage={handleRegenerateMessage}
+            regenerableMessageId={regenerableAssistant?.assistantMessage.id ?? null}
+            isRegenerateDisabled={isLoading || blockState !== null}
             activeCompletionMessageId={activeCompletionMessageId}
             showWhitespaceOverlays={showWhitespaceOverlays}
             showPunctuationOverlays={showPunctuationOverlays}

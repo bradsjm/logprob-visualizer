@@ -3,7 +3,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { getTokenColorClass, tokenColorToTextClass } from "@/lib/utils";
+import {
+  formatProbabilityPercent,
+  getTokenColorClass,
+  tokenColorToTextClass,
+} from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
 
 interface TokenTooltipProps {
@@ -12,8 +16,6 @@ interface TokenTooltipProps {
   onAlternativeClick: (altToken: string) => void;
   onClose: () => void;
   isPinned: boolean;
-  min?: number;
-  max?: number;
   anchorEl?: HTMLElement | null;
 }
 
@@ -26,8 +28,6 @@ export const TokenTooltip = ({
   onAlternativeClick,
   onClose,
   isPinned,
-  min,
-  max,
   anchorEl,
 }: TokenTooltipProps) => {
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -64,20 +64,7 @@ export const TokenTooltip = ({
     };
   }, [isPinned, onClose]);
 
-  const formatPercent = (prob: number) => {
-    if (!Number.isFinite(prob) || prob < 0) {
-      return "< 0.01%";
-    }
-    const percent = prob * 100;
-    if (percent < 0.01) {
-      return "< 0.01%";
-    }
-    return `${percent.toFixed(2)}%`;
-  };
-  const tokenClass =
-    min !== undefined && max !== undefined
-      ? tokenColorToTextClass(getTokenColorClass(token.logprob, min, max))
-      : "";
+  const tokenClass = tokenColorToTextClass(getTokenColorClass(token.prob));
 
   // Edge-aware positioning batched with requestAnimationFrame to avoid layout thrash
   useLayoutEffect(() => {
@@ -143,7 +130,7 @@ export const TokenTooltip = ({
       window.removeEventListener("scroll", scroll, true);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [anchorEl, token.index, token.logprob, min, max]);
+  }, [anchorEl, token.index, token.logprob]);
 
   const body = document.body;
   const content = (
@@ -186,7 +173,7 @@ export const TokenTooltip = ({
           <div className="text-sm text-muted-foreground">
             Probability:{" "}
             <span className={`font-medium ${tokenClass}`}>
-              {formatPercent(token.prob)}
+              {formatProbabilityPercent(token.prob)}
             </span>
           </div>
           <div className="text-sm text-muted-foreground">
@@ -206,11 +193,7 @@ export const TokenTooltip = ({
             <div className="space-y-1">
               {token.top_logprobs.slice(0, 5).map((alt, index) => {
                 const altClass =
-                  min !== undefined && max !== undefined
-                    ? tokenColorToTextClass(
-                        getTokenColorClass(alt.logprob, min, max),
-                      )
-                    : "";
+                  tokenColorToTextClass(getTokenColorClass(alt.prob));
                 return (
                   <button
                     key={index}
@@ -226,7 +209,7 @@ export const TokenTooltip = ({
                       <span
                         className={`text-sm text-muted-foreground group-hover:text-accent-foreground ${altClass}`}
                       >
-                        {formatPercent(alt.prob)}
+                        {formatProbabilityPercent(alt.prob)}
                       </span>
                     </div>
                   </button>

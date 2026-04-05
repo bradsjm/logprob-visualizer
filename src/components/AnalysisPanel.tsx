@@ -71,6 +71,8 @@ export const AnalysisPanel = ({
             : "text-foreground";
 
   // Use server-provided usage values directly.
+  const formatUsageValue = (value: number | undefined): string =>
+    typeof value === "number" ? String(value) : "--";
 
   return (
     <div className="analysis-panel">
@@ -84,19 +86,19 @@ export const AnalysisPanel = ({
             <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 bg-token-high/15 border border-token-high/30 rounded"></div>
-                <span>High probability (&gt; 75th percentile)</span>
+                <span>High probability (75.00% to 100.00%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 bg-token-med-high/15 border border-token-med-high/30 rounded"></div>
-                <span>Medium-high probability</span>
+                <span>Medium-high probability (50.00% to 74.99%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 bg-token-med-low/15 border border-token-med-low/30 rounded"></div>
-                <span>Medium-low probability</span>
+                <span>Medium-low probability (25.00% to 49.99%)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 bg-token-low/15 border-b-2 border-dashed border-token-low rounded"></div>
-                <span>Low probability (&lt; 25th percentile)</span>
+                <span>Low probability (below 25.00%)</span>
               </div>
             </div>
             <div className="pt-2 border-t text-xs text-muted-foreground flex items-start gap-2">
@@ -140,15 +142,21 @@ export const AnalysisPanel = ({
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="space-y-1">
                 <div className="text-muted-foreground">Prompt tokens</div>
-                <div className="font-medium">{completion.usage.prompt_tokens}</div>
+                <div className="font-medium">
+                  {formatUsageValue(completion.usage?.prompt_tokens)}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Completion tokens</div>
-                <div className="font-medium">{completion.usage.completion_tokens}</div>
+                <div className="font-medium">
+                  {formatUsageValue(completion.usage?.completion_tokens)}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Total tokens</div>
-                <div className="font-medium">{completion.usage.total_tokens}</div>
+                <div className="font-medium">
+                  {formatUsageValue(completion.usage?.total_tokens)}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">Finish reason</div>

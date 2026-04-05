@@ -12,19 +12,24 @@ function buildHeaders(apiKey: string): HeadersInit {
 
 async function readErrorDetail(response: Response): Promise<string> {
   const fallback = `HTTP ${response.status}: ${response.statusText}`;
+  const rawBody = await response.text().catch(() => "");
+  const trimmedBody = rawBody.trim();
+
+  if (!trimmedBody) {
+    return fallback;
+  }
 
   try {
-    const body = (await response.json()) as {
+    const body = JSON.parse(trimmedBody) as {
       error?: { message?: string };
       message?: string;
       detail?: string;
     };
     const detail =
-      body.error?.message ?? body.message ?? body.detail ?? response.statusText;
+      body.error?.message ?? body.message ?? body.detail ?? trimmedBody;
     return `HTTP ${response.status}: ${detail}`;
   } catch {
-    const detail = await response.text().catch(() => "");
-    return detail ? `HTTP ${response.status}: ${detail}` : fallback;
+    return `HTTP ${response.status}: ${trimmedBody}`;
   }
 }
 
@@ -37,6 +42,16 @@ export class TransientModelCapabilityError extends Error {
     super(message);
     this.name = "TransientModelCapabilityError";
   }
+}
+
+function isLogprobsUnsupportedError(detail: string): boolean {
+  const mentionsLogprobs = /logprob|top_logprobs/i.test(detail);
+  const indicatesUnsupported =
+    /unsupported|not support|does not support|unknown parameter|invalid parameter/i.test(
+      detail,
+    );
+
+  return mentionsLogprobs && indicatesUnsupported;
 }
 
 export async function fetchProviderModels(
@@ -77,7 +92,12 @@ export async function fetchProviderModels(
     throw new Error("Provider returned an invalid models response.");
   }
 
-  return models;
+  return models.sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -204,13 +224,7 @@ function finalizeCompletion(
     text: aggregatedText,
     tokens: [...tokens],
     finish_reason: finishReason || "stop",
-    usage:
-      usage ??
-      {
-        prompt_tokens: 0,
-        completion_tokens: tokens.length,
-        total_tokens: tokens.length,
-      },
+    usage,
     model,
     latency: Date.now() - startedAt,
   };
@@ -269,6 +283,7 @@ export async function* parseOpenAIStream(
 export async function probeModelLogprobsSupport(
   settings: Readonly<ConnectionSettings>,
   modelId: string,
+  signal?: AbortSignal,
 ): Promise<ModelCapability> {
   const normalized = normalizeConnectionSettings(settings);
   const response = await fetch(
@@ -285,16 +300,13 @@ export async function probeModelLogprobsSupport(
         top_logprobs: 1,
         stream: false,
       }),
+      signal,
     },
   );
 
   if (!response.ok) {
     const detail = await readErrorDetail(response);
-    if (
-      /logprob|top_logprobs|unsupported|not support|unknown parameter/i.test(
-        detail,
-      )
-    ) {
+    if (isLogprobsUnsupportedError(detail)) {
       return {
         status: "unsupported",
         message: detail,
@@ -333,6 +345,30 @@ export async function probeModelLogprobsSupport(
     status: "supported",
     message: null,
   };
+}
+
+export function extractStreamError(chunk: unknown): string | null {
+  if (!isObject(chunk)) {
+    return null;
+  }
+
+  if (
+    isObject(chunk.error) &&
+    typeof chunk.error.message === "string" &&
+    chunk.error.message.trim().length > 0
+  ) {
+    return chunk.error.message;
+  }
+
+  if (typeof chunk.message === "string" && chunk.message.trim().length > 0) {
+    return chunk.message;
+  }
+
+  if (typeof chunk.detail === "string" && chunk.detail.trim().length > 0) {
+    return chunk.detail;
+  }
+
+  return null;
 }
 
 export function consumeStreamChunk(
