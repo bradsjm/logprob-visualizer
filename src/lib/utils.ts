@@ -11,6 +11,56 @@ export function cn(...inputs: ClassValue[]) {
 // Token utilities
 import type { TokenLP } from "@/types/logprob";
 
+export type TokenProbabilityBand =
+  | "low"
+  | "med-low"
+  | "med-high"
+  | "high";
+
+interface TokenProbabilityBandMeta {
+  readonly band: TokenProbabilityBand;
+  readonly label: string;
+  readonly min: number;
+  readonly max: number;
+  readonly surfaceClassName: string;
+  readonly textClassName: string;
+}
+
+export const TOKEN_PROBABILITY_BANDS: readonly TokenProbabilityBandMeta[] = [
+  {
+    band: "high",
+    label: "High probability",
+    min: 0.75,
+    max: 1,
+    surfaceClassName: "token-high-prob",
+    textClassName: "text-token-high",
+  },
+  {
+    band: "med-high",
+    label: "Medium-high probability",
+    min: 0.5,
+    max: 0.75,
+    surfaceClassName: "token-med-high-prob",
+    textClassName: "text-token-med-high",
+  },
+  {
+    band: "med-low",
+    label: "Medium-low probability",
+    min: 0.25,
+    max: 0.5,
+    surfaceClassName: "token-med-low-prob",
+    textClassName: "text-token-med-low",
+  },
+  {
+    band: "low",
+    label: "Low probability",
+    min: 0,
+    max: 0.25,
+    surfaceClassName: "token-low-prob",
+    textClassName: "text-token-low",
+  },
+] as const;
+
 /**
  * Returns true if the token string is entirely whitespace (spaces, tabs, newlines).
  */
@@ -89,6 +139,21 @@ export function getTokenColorClass(
   if (prob < 0.5) return "token-med-low-prob";
   if (prob < 0.75) return "token-med-high-prob";
   return "token-high-prob";
+}
+
+export function getTokenProbabilityBand(prob: number): TokenProbabilityBand {
+  if (prob < 0.25) return "low";
+  if (prob < 0.5) return "med-low";
+  if (prob < 0.75) return "med-high";
+  return "high";
+}
+
+export function getTokenProbabilityBandMeta(
+  prob: number,
+): TokenProbabilityBandMeta {
+  const band = getTokenProbabilityBand(prob);
+
+  return TOKEN_PROBABILITY_BANDS.find((entry) => entry.band === band)!;
 }
 
 /** Return matching text color class for a token color class. */

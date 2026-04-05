@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -24,47 +23,52 @@ export interface UseRunParametersResult {
 
 export function useRunParameters(): UseRunParametersResult {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedModelId, setSelectedModelIdState] = useState<string | null>(
-    () => searchParams.get("model"),
-  );
-  const [runParameters, setRunParametersState] = useState<RunParameters>(() =>
-    parseRunParameters(searchParams),
-  );
-
-  useEffect(() => {
-    const nextSearchParams = buildRunParameterSearchParams(
-      searchParams,
-      selectedModelId,
-      runParameters,
-    );
-
-    if (nextSearchParams.toString() !== searchParams.toString()) {
-      setSearchParams(nextSearchParams, { replace: true });
-    }
-  }, [runParameters, searchParams, selectedModelId, setSearchParams]);
+  const selectedModelId = searchParams.get("model");
+  const runParameters = parseRunParameters(searchParams);
 
   return {
     selectedModelId,
     setSelectedModelId(next) {
-      setSelectedModelIdState((current) => {
-        if (typeof next === "function") {
-          return next(current);
-        }
+      const currentModelId = searchParams.get("model");
+      const nextModelId =
+        typeof next === "function" ? next(currentModelId) : next;
+      const nextSearchParams = buildRunParameterSearchParams(
+        searchParams,
+        nextModelId,
+        runParameters,
+      );
 
-        return next;
-      });
+      if (nextSearchParams.toString() !== searchParams.toString()) {
+        setSearchParams(nextSearchParams, { replace: true });
+      }
     },
     runParameters,
     setRunParameters(next) {
-      setRunParametersState((current) =>
-        patchRunParameters(
-          current,
-          typeof next === "function" ? next(current) : next,
-        ),
+      const nextParameters = patchRunParameters(
+        runParameters,
+        typeof next === "function" ? next(runParameters) : next,
       );
+      const nextSearchParams = buildRunParameterSearchParams(
+        searchParams,
+        selectedModelId,
+        nextParameters,
+      );
+
+      if (nextSearchParams.toString() !== searchParams.toString()) {
+        setSearchParams(nextSearchParams, { replace: true });
+      }
     },
     applyRunParameterPatch(patch) {
-      setRunParametersState((current) => patchRunParameters(current, patch));
+      const nextParameters = patchRunParameters(runParameters, patch);
+      const nextSearchParams = buildRunParameterSearchParams(
+        searchParams,
+        selectedModelId,
+        nextParameters,
+      );
+
+      if (nextSearchParams.toString() !== searchParams.toString()) {
+        setSearchParams(nextSearchParams, { replace: true });
+      }
     },
   };
 }

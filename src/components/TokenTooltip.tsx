@@ -5,8 +5,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
   formatProbabilityPercent,
-  getTokenColorClass,
-  tokenColorToTextClass,
+  getTokenProbabilityBandMeta,
 } from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
 
@@ -64,7 +63,7 @@ export const TokenTooltip = ({
     };
   }, [isPinned, onClose]);
 
-  const tokenClass = tokenColorToTextClass(getTokenColorClass(token.prob));
+  const tokenClass = getTokenProbabilityBandMeta(token.prob).textClassName;
 
   // Edge-aware positioning batched with requestAnimationFrame to avoid layout thrash
   useLayoutEffect(() => {
@@ -193,12 +192,12 @@ export const TokenTooltip = ({
             <div className="space-y-1">
               {token.top_logprobs.slice(0, 5).map((alt, index) => {
                 const altClass =
-                  tokenColorToTextClass(getTokenColorClass(alt.prob));
+                  getTokenProbabilityBandMeta(alt.prob).textClassName;
                 return (
                   <button
                     key={index}
                     onClick={() => onAlternativeClick(alt.token)}
-                    className="w-full text-left p-2 rounded hover:bg-accent/50 transition-colors group"
+                    className="w-full rounded p-2 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group"
                   >
                     <div className="flex items-center justify-between">
                       <code

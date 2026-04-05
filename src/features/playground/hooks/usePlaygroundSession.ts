@@ -149,6 +149,15 @@ export function usePlaygroundSession({
     }
   }, [currentCompletion, isChartPending]);
 
+  useEffect(
+    () => () => {
+      activeRunIdRef.current = null;
+      activeStreamRef.current?.abort();
+      activeStreamRef.current = null;
+    },
+    [],
+  );
+
   const resetAnalysisState = () => {
     onResetTokenNavigation();
     setLastLowIndex(null);

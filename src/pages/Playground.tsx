@@ -1,40 +1,24 @@
-import { AlertCircle, KeyRound, Loader2 } from "lucide-react";
-import {
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { KeyRound } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { AnalysisPanel } from "@/components/AnalysisPanel";
-import { ChatTranscript } from "@/components/ChatTranscript";
-import { Composer, type ComposerHandle } from "@/components/Composer";
 import { ConnectionSettingsDialog } from "@/components/ConnectionSettingsDialog";
 import { ModelSelector } from "@/components/ModelSelector";
+import { PlaygroundWorkspace } from "@/components/PlaygroundWorkspace";
 import { PresetChips } from "@/components/PresetChips";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { usePlaygroundSession } from "@/features/playground/hooks/usePlaygroundSession";
 import { useRunParameters } from "@/features/playground/hooks/useRunParameters";
-import { useTokenNavigation } from "@/features/playground/hooks/useTokenNavigation";
 import { normalizeRunParameter } from "@/features/playground/lib/runParameters";
 import type { RequestBlockState } from "@/features/playground/lib/types";
 import { useConnectionSettings } from "@/hooks/useConnectionSettings";
 import { useModelCapability } from "@/hooks/useModelCapability";
 import { useModels } from "@/hooks/useModels";
-import { StreamTransport } from "@/lib/transport/stream";
 
 /**
  * Main playground view combining chat, analysis, and parameter controls for logprob exploration.
  */
 const Playground = () => {
-  const composerRef = useRef<ComposerHandle>(null);
-  const resetTokenNavigationRef = useRef<() => void>(() => undefined);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showWhitespaceOverlays, setShowWhitespaceOverlays] = useState(false);
-  const [showPunctuationOverlays, setShowPunctuationOverlays] = useState(false);
   const { settings, connection, resolvedBaseUrl, hasSavedSettings, saveSettings, clearSettings } =
     useConnectionSettings();
   const { selectedModelId, setSelectedModelId, runParameters, setRunParameters, applyRunParameterPatch } =
@@ -44,7 +28,6 @@ const Playground = () => {
   const selectedModel =
     models.find((model) => model.id === selectedModelId) ?? null;
   const capability = useModelCapability(connection, selectedModel?.id ?? null);
-  const transport = useMemo(() => new StreamTransport(connection), [connection]);
 
   useEffect(() => {
     if (!hasSavedSettings || models.length === 0) {
@@ -169,54 +152,26 @@ const Playground = () => {
     };
   }, [capability.message, capability.status]);
 
-  const session = usePlaygroundSession({
-    transport,
-    selectedModelId: selectedModel?.id ?? null,
-    runParameters,
-    blockState,
-    onRequireSettings: () => setIsSettingsOpen(true),
-    onFocusComposer: () => composerRef.current?.focus(),
-    onResetTokenNavigation: () => resetTokenNavigationRef.current(),
-  });
-  const tokenNavigation = useTokenNavigation({
-    composerRef,
-    currentCompletion: session.currentCompletion,
-    activeCompletionMessageId: session.activeCompletionMessageId,
-    lastLowIndex: session.lastLowIndex,
-    onLastLowIndexChange: session.setLastLowIndex,
-    onAnnounce: session.setLiveMessage,
-  });
-  resetTokenNavigationRef.current = tokenNavigation.resetTokenNavigation;
-  const deferredCompletion = useDeferredValue(session.currentCompletion);
-
   return (
-    <div className="workspace-container">
+    <div className="flex h-screen flex-col">
       <ConnectionSettingsDialog
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
         settings={settings}
         resolvedBaseUrl={resolvedBaseUrl}
         onSave={(nextSettings) => {
-          session.abortActiveStream(true);
-          session.resetAnalysisState();
           saveSettings(nextSettings);
           toast("Connection settings saved", {
             description: "Refreshing provider models.",
           });
         }}
         onClear={() => {
-          session.abortActiveStream(true);
           clearSettings();
           setSelectedModelId(null);
-          session.clearHistory();
           toast("Connection settings cleared");
         }}
       />
-      <div aria-live="polite" className="sr-only" role="status">
-        {session.liveMessage}
-      </div>
-
-      <header className="border-b bg-surface/50 px-6 py-4 flex items-center justify-between">
+      <header className="flex items-center justify-between border-b bg-surface/50 px-6 py-4">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold text-foreground">
             Logprob Visualizer
@@ -249,84 +204,16 @@ const Playground = () => {
           </Button>
         </div>
       </header>
-
-      <main className="workspace-main">
-        <div className="transcript-panel">
-          {blockState ?? capabilityNotice ? (
-            <div className="px-6 pt-4">
-              <Alert
-                variant={
-                  blockState?.kind === "unsupported-model" ||
-                    blockState?.kind === "model-error"
-                    ? "destructive"
-                    : "default"
-                }
-              >
-                {blockState?.kind === "checking-capability" ||
-                  blockState?.kind === "loading-models" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-                <AlertTitle>{(blockState ?? capabilityNotice)?.title}</AlertTitle>
-                <AlertDescription>
-                  {(blockState ?? capabilityNotice)?.description}
-                </AlertDescription>
-              </Alert>
-            </div>
-          ) : null}
-          <ChatTranscript
-            messages={session.messages}
-            isLoading={session.isLoading}
-            onTokenClick={tokenNavigation.handleBranch}
-            onRegenerateMessage={session.regenerateMessage}
-            regenerableMessageId={session.regenerableMessageId}
-            isRegenerateDisabled={session.isLoading || blockState !== null}
-            activeCompletionMessageId={session.activeCompletionMessageId}
-            showWhitespaceOverlays={showWhitespaceOverlays}
-            showPunctuationOverlays={showPunctuationOverlays}
-          />
-          <Composer
-            ref={composerRef}
-            onSendMessage={session.sendMessage}
-            isLoading={session.isLoading}
-            isStreaming={session.isStreaming}
-            canSubmit={blockState === null}
-            blockedSendMessage={blockState?.description ?? null}
-            onBlockedSend={() => {
-              if (blockState?.kind === "missing-settings") {
-                setIsSettingsOpen(true);
-              }
-              if (blockState) {
-                toast("Cannot send request", {
-                  description: blockState.description,
-                });
-              }
-            }}
-            onCancel={session.cancelStream}
-            parameters={runParameters}
-            onParametersChange={setRunParameters}
-            showWhitespaceOverlays={showWhitespaceOverlays}
-            showPunctuationOverlays={showPunctuationOverlays}
-            onReadabilityChange={(patch) => {
-              if (typeof patch.showWhitespace === "boolean") {
-                setShowWhitespaceOverlays(patch.showWhitespace);
-              }
-              if (typeof patch.showPunctuation === "boolean") {
-                setShowPunctuationOverlays(patch.showPunctuation);
-              }
-            }}
-            onClearHistory={session.clearHistory}
-          />
-        </div>
-
-        <AnalysisPanel
-          completion={deferredCompletion}
-          isLoadingChart={session.isChartPending}
-          onTokenClick={(tokenIndex) => tokenNavigation.scrollToToken(tokenIndex)}
-          onTokenHover={tokenNavigation.handleChartHover}
-        />
-      </main>
+      <PlaygroundWorkspace
+        key={connection.cacheKey}
+        connection={connection}
+        selectedModelId={selectedModel?.id ?? null}
+        runParameters={runParameters}
+        setRunParameters={setRunParameters}
+        blockState={blockState}
+        capabilityNotice={capabilityNotice}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
     </div>
   );
 };

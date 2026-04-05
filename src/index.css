@@ -6,131 +6,47 @@
 
 @layer base {
   :root {
-    /* Base colors */
     --background: 0 0% 100%;
     --foreground: 210 11% 15%;
-    
-    /* Surfaces */
     --surface: 210 17% 98%;
     --surface-hover: 210 17% 96%;
-    
-    /* Card backgrounds */
     --card: 0 0% 100%;
     --card-foreground: 210 11% 15%;
-
-    /* Popover */
     --popover: 0 0% 100%;
     --popover-foreground: 210 11% 15%;
-
-    /* Brand colors - Primary Green */
     --primary: 140 60% 35%;
     --primary-foreground: 0 0% 100%;
     --primary-hover: 140 60% 30%;
-
-    /* Accent Indigo for focus & controls */
     --accent: 238 58% 67%;
     --accent-foreground: 0 0% 100%;
     --accent-hover: 238 58% 62%;
-
-    /* Secondary neutral */
     --secondary: 210 17% 96%;
     --secondary-foreground: 210 11% 15%;
     --secondary-hover: 210 17% 94%;
-
-    /* Muted text and backgrounds */
     --muted: 210 17% 96%;
     --muted-foreground: 210 11% 46%;
-
-    /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-
-    /* Borders and inputs */
     --border: 210 20% 91%;
     --input: 210 20% 91%;
     --ring: 238 58% 67%;
-
-    /* Token heatmap colors - Low to High probability */
-    --token-low: 0 71% 58%;      /* Red #d73027 */
-    --token-med-low: 40 100% 68%; /* Yellow #fdae61 */
-    --token-med-high: 90 48% 67%; /* Light Green #a6d96a */
-    --token-high: 140 72% 38%;    /* Green #1a9850 */
-
-    /* Semantic states */
-    --success: 140 60% 35%;
-    --warning: 40 100% 50%;
-    --error: 0 71% 58%;
-    --info: 238 58% 67%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    /* Dark theme */
-    --background: 210 20% 6%;
-    --foreground: 210 17% 94%;
-    
-    /* Surfaces */
-    --surface: 210 20% 8%;
-    --surface-hover: 210 20% 10%;
-    
-    --card: 210 20% 8%;
-    --card-foreground: 210 17% 94%;
-
-    --popover: 210 20% 8%;
-    --popover-foreground: 210 17% 94%;
-
-    /* Brand colors stay consistent */
-    --primary: 140 60% 45%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 140 60% 40%;
-
-    --accent: 238 58% 72%;
-    --accent-foreground: 0 0% 100%;
-    --accent-hover: 238 58% 67%;
-
-    --secondary: 210 20% 10%;
-    --secondary-foreground: 210 17% 94%;
-    --secondary-hover: 210 20% 12%;
-
-    --muted: 210 20% 10%;
-    --muted-foreground: 210 11% 60%;
-
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 210 20% 18%;
-    --input: 210 20% 18%;
-    --ring: 238 58% 72%;
-
-    /* Token colors remain the same for consistency */
+    --overlay: 210 18% 8%;
     --token-low: 0 71% 58%;
     --token-med-low: 40 100% 68%;
     --token-med-high: 90 48% 67%;
     --token-high: 140 72% 38%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --success: 140 60% 35%;
+    --warning: 40 100% 50%;
+    --error: 0 71% 58%;
+    --info: 238 58% 67%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
@@ -140,94 +56,68 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
 
 @layer components {
-  /* Token probability visualization */
   .token-span {
-    @apply relative inline cursor-pointer transition-all duration-200 ease-out;
+    @apply relative inline cursor-pointer whitespace-pre-wrap transition-[background-color,border-color,box-shadow,color,outline-color] duration-200 ease-out;
     white-space: pre-wrap;
   }
-  
+
   .token-span:hover {
     @apply shadow-sm;
   }
-  
-  .token-span:focus {
-    @apply outline-none ring-2 ring-accent ring-offset-2;
+
+  .token-span:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
   }
-  
-  /* Token probability colors */
+
   .token-low-prob {
-    background-color: hsl(var(--token-low) / 0.15);
-    border-bottom: 2px dashed hsl(var(--token-low));
+    @apply border-token-low bg-token-low/15;
   }
-  
+
   .token-med-low-prob {
-    background-color: hsl(var(--token-med-low) / 0.15);
+    @apply border-token-med-low bg-token-med-low/15;
   }
-  
+
   .token-med-high-prob {
-    background-color: hsl(var(--token-med-high) / 0.15);
+    @apply border-token-med-high bg-token-med-high/15;
   }
-  
+
   .token-high-prob {
-    background-color: hsl(var(--token-high) / 0.15);
+    @apply border-token-high bg-token-high/15;
   }
 
-  /* Text color helpers matching token palette */
-  .text-token-low { color: hsl(var(--token-low)); }
-  .text-token-med-low { color: hsl(var(--token-med-low)); }
-  .text-token-med-high { color: hsl(var(--token-med-high)); }
-  .text-token-high { color: hsl(var(--token-high)); }
-  
-  /* Chat bubbles */
-  .chat-bubble-user {
-    @apply bg-secondary p-4 rounded-2xl rounded-br-md max-w-[80%] ml-auto;
-  }
-  
-  .chat-bubble-assistant {
-    @apply bg-card p-4 rounded-2xl rounded-bl-md max-w-[85%] border;
-  }
-  
-  /* Workspace layout */
-  .workspace-container {
-    @apply h-screen flex flex-col;
-  }
-  
-  .workspace-main {
-    @apply flex-1 flex min-h-0;
-  }
-  
-  .transcript-panel {
-    @apply flex-1 flex flex-col min-w-0;
-  }
-  
-  .analysis-panel {
-    /* Wider analysis pane for dense charts (up to 128 tokens) */
-    @apply border-l bg-surface/50 flex flex-col;
-    width: 28rem; /* ~448px default */
-  }
-  @screen xl {
-    .analysis-panel { width: 32rem; } /* ~512px on wide screens */
+  .text-token-low {
+    color: hsl(var(--token-low));
   }
 
-  /* External highlight applied when hovering points on the chart */
-  .token-chart-hover {
-    outline: 2px solid hsl(var(--accent));
-    /* Reduce outward bleed so the left edge doesn't overlap previous token */
-    outline-offset: 1px;
-    border-radius: 0.125rem; /* rounded-sm */
-    background-color: color-mix(in oklab, hsl(var(--accent)) 10%, transparent);
+  .text-token-med-low {
+    color: hsl(var(--token-med-low));
   }
 
-  /* Themed scrollbar for the Composer textarea */
+  .text-token-med-high {
+    color: hsl(var(--token-med-high));
+  }
+
+  .text-token-high {
+    color: hsl(var(--token-high));
+  }
+
+  .token-highlighted {
+    @apply rounded-sm bg-accent/10 outline outline-2 outline-accent outline-offset-1;
+  }
+
   .composer-textarea {
-    /* Firefox */
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
   }
@@ -248,11 +138,8 @@
     background: hsl(var(--muted-foreground) / 0.6);
   }
 
-  /* Themed scrollbar for the transcript panel */
   .transcript-scroll {
-    /* Prevent scroll anchoring jitter while content above/below reflows */
     overflow-anchor: none;
-    /* Firefox */
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.5) transparent;
   }
@@ -271,16 +158,15 @@
   .transcript-scroll::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.6);
   }
-  
-  /* Custom animations */
+
   .fade-in {
     animation: fadeIn 0.3s ease-out;
   }
-  
+
   .scale-in {
     animation: scaleIn 0.2s ease-out;
   }
-  
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -291,7 +177,7 @@
       transform: translateY(0);
     }
   }
-  
+
   @keyframes scaleIn {
     from {
       opacity: 0;

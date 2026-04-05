@@ -1,6 +1,5 @@
 import { Loader2, RotateCcw } from "lucide-react";
 import { useStickToBottom } from "use-stick-to-bottom";
-import type { StickToBottomInstance } from "use-stick-to-bottom";
 
 import { TokenText } from "./TokenText";
 
@@ -15,20 +14,19 @@ interface ChatTranscriptProps {
   regenerableMessageId?: string | null;
   isRegenerateDisabled?: boolean;
   activeCompletionMessageId: string | null;
+  highlightedTokenIndex?: number | null;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
 }
-
-type ScrollContainerRef = StickToBottomInstance["scrollRef"];
 
 interface AssistantTokensProps {
   readonly tokens: NonNullable<ChatMessage["tokens"]>;
   readonly onTokenClick: (tokenIndex: number, newToken: string) => void;
   readonly tokenScopeId: string;
   readonly isInteractive: boolean;
+  readonly highlightedTokenIndex: number | null;
   readonly showWhitespaceOverlays: boolean;
   readonly showPunctuationOverlays: boolean;
-  readonly scrollContainerRef: ScrollContainerRef;
 }
 
 const AssistantTokens = ({
@@ -36,9 +34,9 @@ const AssistantTokens = ({
   onTokenClick,
   tokenScopeId,
   isInteractive,
+  highlightedTokenIndex,
   showWhitespaceOverlays,
   showPunctuationOverlays,
-  scrollContainerRef,
 }: AssistantTokensProps) => {
   return (
     <TokenText
@@ -46,9 +44,9 @@ const AssistantTokens = ({
       onTokenClick={onTokenClick}
       tokenScopeId={tokenScopeId}
       isInteractive={isInteractive}
+      highlightedTokenIndex={highlightedTokenIndex}
       showWhitespaceOverlays={showWhitespaceOverlays}
       showPunctuationOverlays={showPunctuationOverlays}
-      scrollContainerRef={scrollContainerRef}
     />
   );
 };
@@ -64,6 +62,7 @@ export const ChatTranscript = ({
   regenerableMessageId = null,
   isRegenerateDisabled = false,
   activeCompletionMessageId,
+  highlightedTokenIndex = null,
   showWhitespaceOverlays = false,
   showPunctuationOverlays = false,
 }: ChatTranscriptProps) => {
@@ -75,7 +74,10 @@ export const ChatTranscript = ({
     messages.length > 0 && messages[messages.length - 1]?.role === "assistant";
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 transcript-scroll">
+    <div
+      ref={scrollRef}
+      className="transcript-scroll flex-1 overflow-y-auto px-6 py-4"
+    >
       <div ref={contentRef} className="space-y-6">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -91,12 +93,12 @@ export const ChatTranscript = ({
         {messages.map((message) => (
           <div key={message.id} className="flex">
             {message.role === "user" ? (
-              <div className="chat-bubble-user">
+              <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-secondary p-4">
                 <p className="text-sm font-medium text-secondary-foreground mb-1">You</p>
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </div>
             ) : (
-              <div className="chat-bubble-assistant group relative pr-12">
+              <div className="group relative max-w-[85%] rounded-2xl rounded-bl-md border bg-card p-4 pr-12">
                 {message.id === regenerableMessageId && onRegenerateMessage ? (
                   <Button
                     type="button"
@@ -117,9 +119,13 @@ export const ChatTranscript = ({
                     onTokenClick={onTokenClick}
                     tokenScopeId={message.id}
                     isInteractive={message.id === activeCompletionMessageId}
+                    highlightedTokenIndex={
+                      message.id === activeCompletionMessageId
+                        ? highlightedTokenIndex
+                        : null
+                    }
                     showWhitespaceOverlays={showWhitespaceOverlays}
                     showPunctuationOverlays={showPunctuationOverlays}
-                    scrollContainerRef={scrollRef}
                   />
                 ) : (
                   <p className="whitespace-pre-wrap">{message.content}</p>
@@ -130,7 +136,7 @@ export const ChatTranscript = ({
         ))}
 
         {isLoading && !hasStreamingAssistant && (
-          <div className="chat-bubble-assistant">
+          <div className="max-w-[85%] rounded-2xl rounded-bl-md border bg-card p-4">
             <p className="text-sm font-medium text-card-foreground mb-2">Assistant</p>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />

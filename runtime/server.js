@@ -22,7 +22,7 @@ const CONTENT_TYPES = {
   ".txt": "text/plain; charset=utf-8",
 };
 
-const HELP_TEXT = `Usage: npx @bradsjm/logprobs-viewer [options]
+const HELP_TEXT = `Usage: npx @bradsjm/logprob-visualizer [options]
 
 Options:
   --host <address>  Host to bind the static server (default: 127.0.0.1)

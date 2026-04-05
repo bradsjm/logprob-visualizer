@@ -21,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { TOKEN_PROBABILITY_BANDS } from "@/lib/utils";
 import type { CompletionLP } from "@/types/logprob";
 // (legend colors are applied within child components/tooltips)
 
@@ -44,12 +45,12 @@ export const AnalysisPanel = ({
 
   if (!completion) {
     return (
-      <div className="analysis-panel">
+      <aside className="w-[28rem] border-l bg-surface/50 xl:w-[32rem]">
         <div className="p-6 text-center text-muted-foreground">
           <BarChart className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p className="text-sm">Generate a completion to see analysis</p>
         </div>
-      </div>
+      </aside>
     );
   }
 
@@ -61,13 +62,13 @@ export const AnalysisPanel = ({
   const r = (completion.finish_reason || "").toLowerCase();
   const finishReasonClass =
     r === "stop" || r === "end_turn" || r === "completed"
-      ? "text-[hsl(var(--success))]"
+      ? "text-success"
       : r === "length" || r === "max_completion_tokens"
         ? "text-destructive"
         : r === "content_filter"
-          ? "text-[hsl(var(--warning))]"
+          ? "text-warning"
           : r === "tool_calls"
-            ? "text-[hsl(var(--info))]"
+            ? "text-info"
             : "text-foreground";
 
   // Use server-provided usage values directly.
@@ -75,7 +76,7 @@ export const AnalysisPanel = ({
     typeof value === "number" ? String(value) : "--";
 
   return (
-    <div className="analysis-panel">
+    <aside className="w-[28rem] border-l bg-surface/50 xl:w-[32rem]">
       <div className="p-4 space-y-4 overflow-y-auto">
         {/* Legend moved to top */}
         <Card>
@@ -84,22 +85,18 @@ export const AnalysisPanel = ({
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="space-y-2 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-high/15 border border-token-high/30 rounded"></div>
-                <span>High probability (75.00% to 100.00%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-med-high/15 border border-token-med-high/30 rounded"></div>
-                <span>Medium-high probability (50.00% to 74.99%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-med-low/15 border border-token-med-low/30 rounded"></div>
-                <span>Medium-low probability (25.00% to 49.99%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 bg-token-low/15 border-b-2 border-dashed border-token-low rounded"></div>
-                <span>Low probability (below 25.00%)</span>
-              </div>
+              {TOKEN_PROBABILITY_BANDS.map((band) => (
+                <div key={band.band} className="flex items-center gap-2">
+                  <div
+                    className={`h-3 w-4 rounded border ${band.surfaceClassName}`}
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {band.label} ({(band.min * 100).toFixed(2)}% to{" "}
+                    {(band.max * 100).toFixed(2)}%)
+                  </span>
+                </div>
+              ))}
             </div>
             <div className="pt-2 border-t text-xs text-muted-foreground flex items-start gap-2">
               <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
@@ -309,6 +306,6 @@ export const AnalysisPanel = ({
           </Collapsible>
         </Card>
       </div>
-    </div>
+    </aside>
   );
 };

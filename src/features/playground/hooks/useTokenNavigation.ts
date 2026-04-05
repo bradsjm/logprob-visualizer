@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { ComposerHandle } from "@/components/Composer";
 import { findNextLowConfidenceIndex } from "@/lib/utils";
@@ -28,6 +28,7 @@ export interface UseTokenNavigationOptions {
 }
 
 export interface UseTokenNavigationResult {
+  readonly highlightedTokenIndex: number | null;
   readonly resetTokenNavigation: () => void;
   readonly handleBranch: (tokenIndex: number, newToken: string) => void;
   readonly handleChartHover: (tokenIndex: number | null) => void;
@@ -42,22 +43,9 @@ export function useTokenNavigation({
   onLastLowIndexChange,
   onAnnounce,
 }: UseTokenNavigationOptions): UseTokenNavigationResult {
-  const lastHoverRef = useRef<number | null>(null);
-
-  const clearHoveredToken = () => {
-    if (
-      activeCompletionMessageId === null ||
-      typeof lastHoverRef.current !== "number"
-    ) {
-      lastHoverRef.current = null;
-      return;
-    }
-
-    findTokenElement(activeCompletionMessageId, lastHoverRef.current)?.classList.remove(
-      "token-chart-hover",
-    );
-    lastHoverRef.current = null;
-  };
+  const [highlightedTokenIndex, setHighlightedTokenIndex] = useState<
+    number | null
+  >(null);
 
   const scrollToToken = useCallback(
     (tokenIndex: number, focus = false) => {
@@ -121,6 +109,7 @@ export function useTokenNavigation({
 
         if (nextIndex !== null) {
           onLastLowIndexChange(nextIndex);
+          setHighlightedTokenIndex(nextIndex);
           scrollToToken(nextIndex, true);
           onAnnounce(`Jumped to low-confidence token ${nextIndex}`);
         }
@@ -140,8 +129,9 @@ export function useTokenNavigation({
   ]);
 
   return {
+    highlightedTokenIndex,
     resetTokenNavigation() {
-      clearHoveredToken();
+      setHighlightedTokenIndex(null);
       onLastLowIndexChange(null);
     },
     handleBranch(tokenIndex, newToken) {
@@ -159,24 +149,11 @@ export function useTokenNavigation({
     },
     handleChartHover(tokenIndex) {
       if (activeCompletionMessageId === null) {
-        clearHoveredToken();
+        setHighlightedTokenIndex(null);
         return;
       }
 
-      if (typeof lastHoverRef.current === "number") {
-        findTokenElement(
-          activeCompletionMessageId,
-          lastHoverRef.current,
-        )?.classList.remove("token-chart-hover");
-      }
-
-      lastHoverRef.current = tokenIndex;
-
-      if (typeof tokenIndex === "number") {
-        findTokenElement(activeCompletionMessageId, tokenIndex)?.classList.add(
-          "token-chart-hover",
-        );
-      }
+      setHighlightedTokenIndex(tokenIndex);
     },
     scrollToToken,
   };

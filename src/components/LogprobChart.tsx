@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   formatProbabilityPercent,
-  getTokenColorClass,
-  tokenColorToTextClass,
+  getTokenProbabilityBandMeta,
 } from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
 
@@ -27,16 +26,7 @@ const CHART_WIDTH = 720;
 const MARGIN = { top: 16, right: 24, bottom: 28, left: 44 };
 
 function colorForToken(prob: number): string {
-  switch (getTokenColorClass(prob)) {
-    case "token-low-prob":
-      return "hsl(var(--token-low))";
-    case "token-med-low-prob":
-      return "hsl(var(--token-med-low))";
-    case "token-med-high-prob":
-      return "hsl(var(--token-med-high))";
-    case "token-high-prob":
-      return "hsl(var(--token-high))";
-  }
+  return `hsl(var(--token-${getTokenProbabilityBandMeta(prob).band}))`;
 }
 
 function useMeasuredWidth<T extends HTMLElement>() {
@@ -107,7 +97,7 @@ export function LogprobChart({
       <svg
         className="h-full w-full"
         viewBox={`0 0 ${width} ${CHART_HEIGHT}`}
-        role="img"
+        role="group"
         aria-label="Token probability chart"
         onMouseLeave={() => {
           setHoveredIndex(null);
@@ -190,10 +180,29 @@ export function LogprobChart({
               fill={color}
               stroke={color}
               className="cursor-pointer"
+              role="button"
+              tabIndex={0}
+              aria-label={`Token ${point.index}, probability ${formatProbabilityPercent(point.prob)}, log probability ${point.logprob.toFixed(3)}`}
               onClick={() => onTokenClick(point.index)}
               onMouseEnter={() => {
                 setHoveredIndex(point.index);
                 onTokenHover?.(point.index);
+              }}
+              onFocus={() => {
+                setHoveredIndex(point.index);
+                onTokenHover?.(point.index);
+              }}
+              onBlur={() => {
+                setHoveredIndex((current) =>
+                  current === point.index ? null : current,
+                );
+                onTokenHover?.(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onTokenClick(point.index);
+                }
               }}
             />
           );
@@ -220,11 +229,7 @@ export function LogprobChart({
         >
           <p className="font-medium">Token #{hoveredPoint.index}</p>
           <p className="text-sm">
-            <code
-              className={`rounded bg-muted px-1 text-xs ${tokenColorToTextClass(
-                getTokenColorClass(hoveredPoint.prob),
-              )}`}
-            >
+            <code className={`rounded bg-muted px-1 text-xs ${getTokenProbabilityBandMeta(hoveredPoint.prob).textClassName}`}>
               "{hoveredPoint.token}"
             </code>
           </p>

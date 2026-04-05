@@ -1,6 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
-import type { StickToBottomInstance } from "use-stick-to-bottom";
+import { useRef, useState } from "react";
 
 import { TokenTooltip } from "./TokenTooltip";
 
@@ -12,19 +11,14 @@ import {
 } from "@/lib/utils";
 import type { TokenLP } from "@/types/logprob";
 
-type ScrollContainerRef =
-  | React.RefObject<HTMLElement>
-  | StickToBottomInstance["scrollRef"];
-
 interface TokenTextProps {
   tokens: TokenLP[];
   onTokenClick: (tokenIndex: number, newToken: string) => void;
   tokenScopeId: string;
   isInteractive?: boolean;
+  highlightedTokenIndex?: number | null;
   showWhitespaceOverlays?: boolean;
   showPunctuationOverlays?: boolean;
-  /** Optional scroll container to drive progressive virtualization. */
-  scrollContainerRef?: ScrollContainerRef;
 }
 
 // (moved to utils)
@@ -37,60 +31,13 @@ export const TokenText = ({
   onTokenClick,
   tokenScopeId,
   isInteractive = true,
+  highlightedTokenIndex = null,
   showWhitespaceOverlays = false,
   showPunctuationOverlays = false,
-  scrollContainerRef,
 }: TokenTextProps) => {
   const [pinnedTooltip, setPinnedTooltip] = useState<number | null>(null);
   const [hoveredToken, setHoveredToken] = useState<number | null>(null);
   const spanRefs = useRef<(HTMLSpanElement | null)[]>([]);
-
-  // Progressive virtualization: render in slices when token count is large to avoid
-  // mounting hundreds of spans at once. We increment on intersection with a sentinel.
-  const VIRTUALIZE_THRESHOLD = 200;
-  const SLICE_INCREMENT = 200;
-  const [visibleCount, setVisibleCount] = useState<number>(() =>
-    tokens.length > VIRTUALIZE_THRESHOLD ? VIRTUALIZE_THRESHOLD : tokens.length,
-  );
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    // Reset visible count when tokens set changes (e.g., new completion)
-    setVisibleCount(
-      tokens.length > VIRTUALIZE_THRESHOLD
-        ? VIRTUALIZE_THRESHOLD
-        : tokens.length,
-    );
-  }, [tokens]);
-
-  useEffect(() => {
-    if (visibleCount >= tokens.length) return; // nothing to observe
-    const root = scrollContainerRef?.current ?? null;
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    let rafId: number | null = null;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry && entry.isIntersecting) {
-          // Batch the state update into next animation frame to minimize layout thrash
-          if (rafId !== null) cancelAnimationFrame(rafId);
-          rafId = requestAnimationFrame(() => {
-            setVisibleCount((prev) =>
-              Math.min(prev + SLICE_INCREMENT, tokens.length),
-            );
-          });
-        }
-      },
-      { root, rootMargin: "800px 0px", threshold: 0 },
-    );
-    io.observe(sentinel);
-    return () => {
-      io.disconnect();
-      if (rafId !== null) cancelAnimationFrame(rafId);
-    };
-  }, [visibleCount, tokens.length, scrollContainerRef]);
 
   const handleTokenClick = (tokenIndex: number, token: string) => {
     if (pinnedTooltip === tokenIndex) {
@@ -114,10 +61,9 @@ export const TokenText = ({
     }
   };
 
-  const renderCount = visibleCount;
   return (
     <div className="relative leading-relaxed" aria-live="polite">
-      {tokens.slice(0, renderCount).map((token) => {
+      {tokens.map((token) => {
         const tokenIndex = token.index;
         const tokenIsWhitespace = isWhitespaceToken(token.token);
         const tokenIsPunct = isPunctuationToken(token.token);
@@ -145,7 +91,7 @@ export const TokenText = ({
               }}
               data-token-index={tokenIndex}
               data-token-scope={tokenScopeId}
-              className={`token-span ${colorClass} border-b-2 ${isLowProb ? "border-dashed border-border" : "border-transparent"}`}
+              className={`token-span ${colorClass} ${highlightedTokenIndex === tokenIndex ? "token-highlighted" : ""} ${!colorClass ? "" : isLowProb ? "border-b-2 border-dashed border-current" : "border-b-2 border-transparent"}`}
               role={isInteractive ? "button" : undefined}
               aria-pressed={isInteractive && pinnedTooltip === tokenIndex ? true : undefined}
               tabIndex={isInteractive ? 0 : undefined}
@@ -183,9 +129,6 @@ export const TokenText = ({
           </span>
         );
       })}
-      {renderCount < tokens.length && (
-        <div ref={sentinelRef} aria-hidden className="h-4" />
-      )}
     </div>
   );
 };

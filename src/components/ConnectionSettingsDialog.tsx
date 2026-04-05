@@ -1,8 +1,10 @@
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -46,12 +48,22 @@ export function ConnectionSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl bg-background">
-        <DialogHeader>
+        <DialogHeader className="relative">
           <DialogTitle>Connection Settings</DialogTitle>
           <DialogDescription>
             Your API key is stored locally in this browser. A blank base URL
             uses the default OpenAI API.
           </DialogDescription>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 h-8 w-8"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
         <div className="space-y-4">
