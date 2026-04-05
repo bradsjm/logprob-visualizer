@@ -1,5 +1,5 @@
 {
-  "name": "@bradsjm/logprobs-viewer",
+  "name": "@bradsjm/logprob-visualizer",
   "version": "1.0.0",
   "description": "Local web UI for exploring token-level log probabilities from OpenAI-compatible chat models.",
   "keywords": [
