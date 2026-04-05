@@ -12,7 +12,7 @@ Logprob Visualizer is a self-contained npm demo for exploring token-level log pr
 - A provider that exposes OpenAI-compatible `GET /models` and `POST /chat/completions` endpoints
 
 ## Getting Started
-1. Run `npx @bradsjm/logprobs-viewer`
+1. Run `npx @bradsjm/logprobs-visualizer`
 2. The package starts a static web server on `http://127.0.0.1:8080` and opens your default browser.
 3. Use `Connection Settings` to save an API key and optional base URL.
 
